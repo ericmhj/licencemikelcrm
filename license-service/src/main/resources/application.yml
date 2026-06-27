@@ -1,0 +1,110 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: license-service
+
+  # PostgreSQL DataSource with HikariCP
+  datasource:
+    url: jdbc:postgresql://localhost:5432/license_db
+    username: license_user
+    password: license_pass
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      pool-name: LicenseServicePool
+
+  # JPA / Hibernate
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  # Mail (Hostinger SMTP)
+  mail:
+    host: ${MAIL_HOST:smtp.hostinger.com}
+    port: ${MAIL_PORT:465}
+    username: ${MAIL_USERNAME:admin@normalia.com.mx}
+    password: ${MAIL_PASSWORD:TU_CONTRASEÑA_AQUI}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.ssl.enable: true
+      mail.smtp.ssl.trust: smtp.hostinger.com
+
+  # Redis
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 2000ms
+
+  # Kafka
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      retries: 3
+      properties:
+        enable.idempotence: true
+    consumer:
+      group-id: license-service-group
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      auto-offset-reset: earliest
+      properties:
+        isolation.level: read_committed
+
+  # Flyway
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  # Jackson
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+    default-property-inclusion: non_null
+    date-format: com.fasterxml.jackson.databind.util.ISO8601DateFormat
+
+# Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+
+# Application-specific configuration
+license-service:
+  jwt:
+    public-key: "${JWT_PUBLIC_KEY:MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArSS2W0tlMIB2Vz7Lm+lI8D2E0j/FGoVoA0YPH4NpFJJsNPWgq3xJ2oV9DcMpVWrmwrCQEl0V0y9f5Rznz5c9U3kA25VJQxPCqJbkF2NXZX9I2ePJgqG8BjXKAVb/u4VRlRqJI8oU3R7VDWVdmiLlc5HfYlLBtj3K3h7LG8lOlY3ynR5A2vQ6rCog0u4fS5F0Hha9MbMJ8VqhXqnWBDkqDIwJgR/D/lrFz7JHUf5b3qR0kL0RcXZq+F4V3cR0GXSE8JaIV3v0TrYzikVMn7qVGmfkPLt5JZ6QL8gELy7BgA8t6/HNmKqbM+QKp6X5nR/yGzCDX3Z0HRwB8VfpJQIDAQAB}"
+    max-ttl-minutes: 15
+    issuer: auth-service
+    # Set to true to disable JWT validation in development (when no auth-service is available)
+    skip-validation: "${JWT_SKIP_VALIDATION:true}"
+  payment:
+    active-gateway: DUMMY
+  rate-limit:
+    query-max-requests-per-second: 1000
+    command-max-requests-per-second: 100
+    window-size-seconds: 1
+  redis:
+    cache-ttl-seconds: 300
+  kafka:
+    topic: license-events

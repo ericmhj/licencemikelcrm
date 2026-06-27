@@ -1,0 +1,38 @@
+spring:
+  datasource:
+    # Testcontainers will override these via @DynamicPropertySource
+    url: jdbc:tc:postgresql:16:///license_test_db
+    username: test_user
+    password: test_pass
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 2
+      connection-timeout: 10000
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+  kafka:
+    bootstrap-servers: localhost:9092
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+
+  flyway:
+    enabled: true
+    clean-disabled: false
+
+# Test RSA public key (2048-bit, for test purposes only)
+license-service:
+  jwt:
+    public-key: "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2a2rwplBQLzom+YPWAFaJPJMNMHJOFKJGx3UfPVEaMcV5bp0FGGx5yrWAOsz4KX3NcB2oNYTnFU3UeTPrml+r5I3lAP4mtTFm1XNQBx9khXD+nY5VOaxFP3Wk9g7laVf9bULujHa9cT7QMJznLyhGR+PJL0qT2LwSaVJ5UiyYBHT1WD9bRhCAe6P9bHqbzBrN9jflOAnnaIDiO7/cUwY+VG4CIT1Wf4AQXY1N7VB3TeNZRc01mEPAi2fDT+7rk9md83FhxEqU1sxc1flVd20L2drYRqsn9bOtqrs4IqIqlhxpvgr4c+x6VXkNl2BhAflEqaHiQCxMHTbF4YEO5QIDAQAB"
+    max-ttl-minutes: 15
+
+logging:
+  level:
+    com.mikelcrm.licenseservice: INFO
+    org.testcontainers: INFO

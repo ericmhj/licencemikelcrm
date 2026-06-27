@@ -1,0 +1,54 @@
+{
+  "name": "License Service - Mikel CRM",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "devcontainer",
+  "workspaceFolder": "/workspace",
+
+  "features": {
+    "ghcr.io/devcontainers/features/java:1": {
+      "version": "21",
+      "installMaven": "true",
+      "mavenVersion": "3.9.6"
+    },
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "version": "latest"
+    },
+    "ghcr.io/devcontainers/features/git:1": {
+      "version": "latest"
+    }
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "vscjava.vscode-java-pack",
+        "vscjava.vscode-spring-boot-dashboard",
+        "vmware.vscode-spring-boot",
+        "vscjava.vscode-maven",
+        "redhat.java",
+        "ms-azuretools.vscode-docker",
+        "humao.rest-client"
+      ],
+      "settings": {
+        "java.configuration.updateBuildConfiguration": "automatic",
+        "java.jdt.ls.java.home": "/usr/local/sdkman/candidates/java/current",
+        "editor.formatOnSave": true,
+        "java.compile.nullAnalysis.mode": "automatic"
+      }
+    }
+  },
+
+  "forwardPorts": [8080, 5432, 6379, 9092, 5050],
+  "portsAttributes": {
+    "8080": { "label": "License Service API", "onAutoForward": "notify" },
+    "5432": { "label": "PostgreSQL", "onAutoForward": "silent" },
+    "6379": { "label": "Redis", "onAutoForward": "silent" },
+    "9092": { "label": "Kafka", "onAutoForward": "silent" },
+    "5050": { "label": "pgAdmin", "onAutoForward": "notify" }
+  },
+
+  "postCreateCommand": "bash /workspace/.devcontainer/post-create.sh",
+  "postStartCommand": "echo '✅ DevContainer ready. Run: mvn spring-boot:run -Dspring-boot.run.profiles=local'",
+
+  "remoteUser": "vscode"
+}

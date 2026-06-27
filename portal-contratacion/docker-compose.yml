@@ -1,0 +1,13 @@
+services:
+  portal:
+    build: .
+    container_name: portal-contratacion
+    ports:
+      - "4200:4200"
+    networks:
+      - license-network
+
+networks:
+  license-network:
+    external: true
+    name: license-service_license-network
