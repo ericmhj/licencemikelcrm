@@ -9,6 +9,7 @@ public class JwtProperties {
     private long maxTtlMinutes = 15;
     private String issuer = "auth-service";
     private boolean skipValidation = false;
+    private boolean trustGatewayHeaders = false;
 
     public String getPublicKey() {
         return publicKey;
@@ -40,5 +41,13 @@ public class JwtProperties {
 
     public void setSkipValidation(boolean skipValidation) {
         this.skipValidation = skipValidation;
+    }
+
+    public boolean isTrustGatewayHeaders() {
+        return trustGatewayHeaders;
+    }
+
+    public void setTrustGatewayHeaders(boolean trustGatewayHeaders) {
+        this.trustGatewayHeaders = trustGatewayHeaders;
     }
 }

@@ -1,6 +1,7 @@
 package com.mikelcrm.licenseservice.config;
 
 import com.mikelcrm.licenseservice.payment.PaymentProperties;
+import com.mikelcrm.licenseservice.security.GatewayHeaderAuthFilter;
 import com.mikelcrm.licenseservice.security.JwtAuthFilter;
 import com.mikelcrm.licenseservice.security.RateLimitFilter;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -47,10 +48,16 @@ public class SecurityConfig {
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
                         .anyRequest().authenticated()
                 )
+                .addFilterBefore(gatewayHeaderAuthFilter(), UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthFilter(), UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(rateLimitFilter(), JwtAuthFilter.class);
 
         return http.build();
+    }
+
+    @Bean
+    public GatewayHeaderAuthFilter gatewayHeaderAuthFilter() {
+        return new GatewayHeaderAuthFilter(jwtProperties.isTrustGatewayHeaders());
     }
 
     @Bean

@@ -12,7 +12,8 @@ services:
       SPRING_DATASOURCE_USERNAME: license_user
       SPRING_DATASOURCE_PASSWORD: license_pass
       SPRING_DATA_REDIS_HOST: redis
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: license-kafka:9092
+      LICENSE_SERVICE_JWT_TRUST_GATEWAY_HEADERS: "true"
       MAIL_HOST: smtp.hostinger.com
       MAIL_PORT: 465
       MAIL_USERNAME: admin@normalia.com.mx
@@ -32,6 +33,7 @@ services:
       start_period: 30s
     networks:
       - license-network
+      - mikel-net
     restart: unless-stopped
 
   postgres:
@@ -82,7 +84,7 @@ services:
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://license-kafka:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
@@ -100,7 +102,27 @@ services:
       start_period: 45s
     networks:
       - license-network
+      - mikel-net
     restart: unless-stopped
+
+  kafka-init:
+    image: apache/kafka:3.7.0
+    container_name: license-kafka-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "Creando topics de Kafka..."
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server license-kafka:9092 --create --if-not-exists --topic tenant.lifecycle --partitions 4 --replication-factor 1
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server license-kafka:9092 --create --if-not-exists --topic license.events --partitions 4 --replication-factor 1
+        echo "Topics creados:"
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server license-kafka:9092 --list
+    networks:
+      - license-network
+      - mikel-net
+    restart: "no"
 
   mailhog:
     image: mailhog/mailhog
@@ -135,3 +157,6 @@ volumes:
 networks:
   license-network:
     driver: bridge
+  mikel-net:
+    name: mikel-net
+    external: true

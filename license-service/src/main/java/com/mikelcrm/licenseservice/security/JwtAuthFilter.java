@@ -53,6 +53,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
 
+        // If already authenticated (e.g., by GatewayHeaderAuthFilter), skip JWT validation
+        if (SecurityContextHolder.getContext().getAuthentication() != null
+                && SecurityContextHolder.getContext().getAuthentication().isAuthenticated()) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         // In development mode, skip JWT validation and set a default dev authentication
         if (skipValidation) {
             UUID devTenantId = UUID.fromString("00000000-0000-0000-0000-000000000001");
