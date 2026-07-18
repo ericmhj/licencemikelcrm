@@ -15,26 +15,27 @@ import java.util.Set;
 public class PermissionMatrix {
 
     private static final Map<RolTenant, Map<String, Set<String>>> PERMISSIONS = Map.of(
-            RolTenant.ADMIN_CUENTA, Map.of(
+            RolTenant.admin, Map.of(
                     "contratos", Set.of("leer", "crear", "actualizar", "eliminar"),
                     "licencias", Set.of("leer", "crear", "actualizar"),
                     "creditos", Set.of("leer", "crear"),
                     "usuarios", Set.of("leer", "crear", "actualizar", "eliminar"),
                     "reportes", Set.of("leer"),
-                    "tickets", Set.of("leer")
+                    "tickets", Set.of("leer"),
+                    "planes", Set.of("leer", "crear", "actualizar", "eliminar")
             ),
-            RolTenant.SUPERVISOR, Map.of(
+            RolTenant.manager, Map.of(
                     "tickets", Set.of("leer", "crear", "actualizar", "eliminar", "aprobar"),
                     "reportes", Set.of("leer", "crear"),
                     "clientes", Set.of("leer", "crear", "actualizar"),
                     "aprobacion_docs", Set.of("leer", "crear", "aprobar", "firmar")
             ),
-            RolTenant.TECNICO, Map.of(
+            RolTenant.tecnico, Map.of(
                     "reportes", Set.of("leer", "crear"),
                     "creditos", Set.of("leer"),
                     "tickets", Set.of("leer", "actualizar")
             ),
-            RolTenant.ASISTENTE, Map.of(
+            RolTenant.asistente, Map.of(
                     "clientes", Set.of("leer", "crear", "actualizar"),
                     "tickets", Set.of("leer", "crear", "actualizar"),
                     "reportes", Set.of("leer")
@@ -43,7 +44,7 @@ public class PermissionMatrix {
 
     // Explicit denies take precedence over allows
     private static final Map<RolTenant, Map<String, Set<String>>> DENIES = Map.of(
-            RolTenant.ASISTENTE, Map.of(
+            RolTenant.asistente, Map.of(
                     "config_sistema", Set.of("leer", "crear", "actualizar", "eliminar", "configurar"),
                     "aprobacion_docs", Set.of("leer", "crear", "aprobar", "firmar"),
                     "creditos", Set.of("leer", "crear", "actualizar"),

@@ -3,7 +3,7 @@ export interface AccessResponse {
   status: 'ACTIVE' | 'SUSPENDED' | 'CANCELLED' | 'ONBOARDING';
   modules: string[];
   creditBalance: number;
-  userRole: 'ADMIN_CUENTA' | 'SUPERVISOR' | 'TECNICO' | 'ASISTENTE';
+  userRole: 'platform_admin' | 'superusuario' | 'admin' | 'manager' | 'tecnico' | 'asistente';
   cachedAt: string;
 }
 

@@ -49,7 +49,7 @@ export class ModulesSectionComponent {
   contractData = input.required<ContractResponse | null>();
   accessData = input<AccessResponse | null>(null);
 
-  readonly isAdmin = computed(() => this.authService.getUserRole() === 'ADMIN_CUENTA');
+  readonly isAdmin = computed(() => this.authService.getUserRole() === 'admin');
 
   activeModules = computed(() => {
     const data = this.contractData();

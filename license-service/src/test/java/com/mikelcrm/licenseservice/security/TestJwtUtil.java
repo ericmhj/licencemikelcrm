@@ -70,7 +70,7 @@ public final class TestJwtUtil {
      *
      * @param tenantId the tenant UUID
      * @param userId   the user UUID
-     * @param rol      the user role (e.g., ADMIN_CUENTA, SUPERVISOR, TECNICO, ASISTENTE)
+     * @param rol      the user role (e.g., admin, manager, tecnico, asistente)
      * @return a signed JWT string
      */
     public static String generateToken(UUID tenantId, UUID userId, String rol) {

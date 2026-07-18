@@ -1,12 +1,14 @@
 export interface JwtPayload {
   sub: string;
-  tenantId: string;
-  rol: UserRole;
+  tenantId?: string;
+  tenant_id?: string;
+  rol?: UserRole;
+  roles?: string[];
   exp: number;
   iat: number;
 }
 
-export type UserRole = 'ADMIN_CUENTA' | 'SUPERVISOR' | 'TECNICO' | 'ASISTENTE';
+export type UserRole = 'platform_admin' | 'superusuario' | 'admin' | 'manager' | 'tecnico' | 'asistente';
 
 export interface AuthState {
   isAuthenticated: boolean;

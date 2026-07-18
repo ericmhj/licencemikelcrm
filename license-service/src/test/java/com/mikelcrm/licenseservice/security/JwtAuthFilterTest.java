@@ -59,7 +59,7 @@ class JwtAuthFilterTest {
     void validToken_setsAuthentication() throws Exception {
         UUID tenantId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
-        String rol = "ADMIN_CUENTA";
+        String rol = "admin";
 
         String token = buildValidToken(tenantId, userId, rol, 15);
         when(request.getHeader("Authorization")).thenReturn("Bearer " + token);
@@ -111,7 +111,7 @@ class JwtAuthFilterTest {
         String token = Jwts.builder()
                 .claim("tenantId", tenantId.toString())
                 .claim("userId", userId.toString())
-                .claim("rol", "TECNICO")
+                .claim("rol", "tecnico")
                 .issuedAt(Date.from(issuedAt))
                 .expiration(Date.from(expiration))
                 .signWith(keyPair.getPrivate())
@@ -133,7 +133,7 @@ class JwtAuthFilterTest {
         UUID userId = UUID.randomUUID();
 
         // Token with 60-minute TTL (exceeds 15-minute max)
-        String token = buildValidToken(tenantId, userId, "SUPERVISOR", 60);
+        String token = buildValidToken(tenantId, userId, "manager", 60);
         when(request.getHeader("Authorization")).thenReturn("Bearer " + token);
         StringWriter sw = new StringWriter();
         when(response.getWriter()).thenReturn(new PrintWriter(sw));
@@ -154,7 +154,7 @@ class JwtAuthFilterTest {
         String token = Jwts.builder()
                 .claim("tenantId", UUID.randomUUID().toString())
                 .claim("userId", UUID.randomUUID().toString())
-                .claim("rol", "TECNICO")
+                .claim("rol", "tecnico")
                 .issuedAt(Date.from(Instant.now()))
                 .expiration(Date.from(Instant.now().plus(10, ChronoUnit.MINUTES)))
                 .signWith(otherKeyPair.getPrivate())
@@ -174,7 +174,7 @@ class JwtAuthFilterTest {
     void validToken_setsRoleAuthority() throws Exception {
         UUID tenantId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
-        String rol = "SUPERVISOR";
+        String rol = "manager";
 
         String token = buildValidToken(tenantId, userId, rol, 15);
         when(request.getHeader("Authorization")).thenReturn("Bearer " + token);
@@ -184,7 +184,7 @@ class JwtAuthFilterTest {
         var auth = SecurityContextHolder.getContext().getAuthentication();
         assertThat(auth.getAuthorities())
                 .extracting(Object::toString)
-                .containsExactly("ROLE_SUPERVISOR");
+                .containsExactly("ROLE_manager");
     }
 
     private String buildValidToken(UUID tenantId, UUID userId, String rol, long ttlMinutes) {

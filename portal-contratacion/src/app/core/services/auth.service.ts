@@ -25,11 +25,18 @@ export class AuthService {
   }
 
   getUserRole(): UserRole | null {
-    return this._authState().user?.rol ?? null;
+    const user = this._authState().user;
+    if (!user) return null;
+    // Support both 'rol' (License Service JWT) and 'roles' (Keycloak JWT)
+    if (user.rol) return user.rol;
+    if (user.roles && user.roles.length > 0) return user.roles[0] as UserRole;
+    return null;
   }
 
   getTenantId(): string | null {
-    return this._authState().tenantId;
+    const user = this._authState().user;
+    if (!user) return null;
+    return user.tenantId ?? user.tenant_id ?? null;
   }
 
   login(token: string): void {
@@ -62,7 +69,7 @@ export class AuthService {
           isAuthenticated: true,
           token,
           user: payload,
-          tenantId: payload.tenantId,
+          tenantId: payload.tenantId ?? payload.tenant_id ?? null,
         });
       } else {
         localStorage.removeItem(this.TOKEN_KEY);

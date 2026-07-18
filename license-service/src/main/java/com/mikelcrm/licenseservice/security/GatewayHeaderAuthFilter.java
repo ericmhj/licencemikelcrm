@@ -38,11 +38,24 @@ public class GatewayHeaderAuthFilter extends OncePerRequestFilter {
     private static final String HEADER_CONSUMER_ID = "X-Consumer-Id";
     private static final String HEADER_LICENSE_ID = "X-License-Id";
     private static final String HEADER_PLAN_TYPE = "X-Plan-Type";
+    private static final String HEADER_USER_ROLE = "X-User-Role";
 
     private final boolean enabled;
 
     public GatewayHeaderAuthFilter(boolean enabled) {
         this.enabled = enabled;
+    }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        return path.startsWith("/api/v1/plans") ||
+               path.startsWith("/api/v1/health") ||
+               path.startsWith("/actuator") ||
+               path.startsWith("/api/v1/payments") ||
+               path.startsWith("/api/v1/notifications") ||
+               path.startsWith("/swagger-ui") ||
+               path.startsWith("/v3/api-docs");
     }
 
     @Override
@@ -58,6 +71,7 @@ public class GatewayHeaderAuthFilter extends OncePerRequestFilter {
         String consumerId = request.getHeader(HEADER_CONSUMER_ID);
         String licenseId = request.getHeader(HEADER_LICENSE_ID);
         String planType = request.getHeader(HEADER_PLAN_TYPE);
+        String userRole = request.getHeader(HEADER_USER_ROLE);
 
         // Only trust gateway headers if X-Consumer-Id is present (injected by APISIX)
         if (consumerId != null && !consumerId.isBlank()) {
@@ -67,8 +81,9 @@ public class GatewayHeaderAuthFilter extends OncePerRequestFilter {
                 // Use license_id as tenantId (or derive from it)
                 UUID tenantId = deriveTenantId(licenseId);
 
-                // Use plan_type as rol, default to USER if not present
-                String rol = (planType != null && !planType.isBlank()) ? planType : "USER";
+                // Use X-User-Role for operational role, fallback to plan_type for backward compat
+                String rol = (userRole != null && !userRole.isBlank()) ? userRole :
+                             (planType != null && !planType.isBlank()) ? planType : "USER";
 
                 TenantAuthenticationToken authentication =
                         new TenantAuthenticationToken(userId, tenantId, rol);

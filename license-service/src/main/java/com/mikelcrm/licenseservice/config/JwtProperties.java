@@ -10,6 +10,15 @@ public class JwtProperties {
     private String issuer = "auth-service";
     private boolean skipValidation = false;
     private boolean trustGatewayHeaders = false;
+    private String keycloakJwksUrl;
+
+    public String getKeycloakJwksUrl() {
+        return keycloakJwksUrl;
+    }
+
+    public void setKeycloakJwksUrl(String keycloakJwksUrl) {
+        this.keycloakJwksUrl = keycloakJwksUrl;
+    }
 
     public String getPublicKey() {
         return publicKey;

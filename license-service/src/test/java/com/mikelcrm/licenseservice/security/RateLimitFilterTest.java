@@ -183,7 +183,7 @@ class RateLimitFilterTest {
     private void setUpAuthentication() {
         UUID tenantId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
-        TenantAuthenticationToken auth = new TenantAuthenticationToken(userId, tenantId, "ADMIN_CUENTA");
+        TenantAuthenticationToken auth = new TenantAuthenticationToken(userId, tenantId, "admin");
         SecurityContextHolder.getContext().setAuthentication(auth);
     }
 }

@@ -12,10 +12,17 @@ export const routes: Routes = [
   {
     path: 'dashboard',
     canActivate: [authGuard, roleGuard],
-    data: { roles: ['ADMIN_CUENTA', 'SUPERVISOR'] },
+    data: { roles: ['admin', 'manager', 'superusuario'] },
     loadChildren: () =>
       import('./features/dashboard/dashboard.routes')
         .then(m => m.DASHBOARD_ROUTES),
+  },
+  {
+    path: 'admin',
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['admin', 'superusuario', 'platform_admin'] },
+    loadChildren: () =>
+      import('./features/admin/admin.routes').then(m => m.ADMIN_ROUTES),
   },
   { path: '', redirectTo: 'contratacion', pathMatch: 'full' },
   {

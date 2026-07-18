@@ -14,6 +14,7 @@ import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../../environments/environment';
 import { MODULOS_DISPONIBLES, PAQUETES_CREDITOS, ModuloDisponible, PaqueteCreditos } from '../../../../core/models/calculator.model';
 import { CurrencyEurPipe } from '../../../../shared/pipes/currency-eur.pipe';
+import { PlanService, Plan } from '../../../../core/services/plan.service';
 
 @Component({
   selector: 'app-contract-form',
@@ -79,10 +80,11 @@ import { CurrencyEurPipe } from '../../../../shared/pipes/currency-eur.pipe';
             </mat-form-field>
 
             <mat-form-field class="w-full" appearance="outline">
-              <mat-label>Modalidad de apertura</mat-label>
-              <mat-select [(ngModel)]="formData.modalidad" required>
-                <mat-option value="ESTANDAR">Estándar — 400 € (2 créditos)</mat-option>
-                <mat-option value="PERSONALIZADO">Personalizada — 1.400 € (10 créditos)</mat-option>
+              <mat-label>Plan</mat-label>
+              <mat-select [(ngModel)]="formData.plan" required>
+                @for (plan of planes(); track plan.codigo) {
+                  <mat-option [value]="plan.codigo">{{ plan.nombre }}</mat-option>
+                }
               </mat-select>
             </mat-form-field>
 
@@ -119,21 +121,30 @@ export class ContractFormComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly http = inject(HttpClient);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly planService = inject(PlanService);
 
   selectedModules = signal<ModuloDisponible[]>([]);
   selectedPackage = signal<PaqueteCreditos | null>(null);
   submitting = signal(false);
   errorMessage = signal<string | null>(null);
+  planes = signal<Plan[]>([]);
 
   formData = {
     nombre: '',
     email: '',
+    plan: '',
     modalidad: 'ESTANDAR',
   };
 
   cuotaMensual = signal(0);
 
   ngOnInit(): void {
+    // Load plans catalog
+    this.planService.getAll().subscribe({
+      next: (plans) => this.planes.set(plans),
+      error: () => console.error('Error cargando catálogo de planes'),
+    });
+
     const params = this.route.snapshot.queryParams;
     const moduleIds = (params['modules'] || '').split(',').filter(Boolean);
     const packageId = params['package'] || null;
@@ -208,9 +219,15 @@ export class ContractFormComponent implements OnInit {
       this.submitting.set(false);
       this.snackBar.open('¡Solicitud enviada! Tu contrato ha sido creado.', 'OK', { duration: 5000 });
 
-      // Redirigir a confirmación
+      // Redirigir a confirmación con datos para acceso al tenant
+      const slug = tenantResponse.slug || this.formData.nombre.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
       this.router.navigate(['/contratacion/confirmacion'], {
-        queryParams: { tenantId, nombre: this.formData.nombre },
+        queryParams: {
+          tenantId,
+          nombre: this.formData.nombre,
+          email: this.formData.email,
+          slug,
+        },
       });
 
     } catch (err: any) {

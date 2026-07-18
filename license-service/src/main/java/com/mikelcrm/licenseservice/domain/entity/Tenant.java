@@ -48,4 +48,7 @@ public class Tenant {
 
     @Column(name = "deuda_almacenamiento", nullable = false, precision = 10, scale = 2)
     private BigDecimal deudaAlmacenamiento;
+
+    @Column(name = "plan_id")
+    private UUID planId;
 }

@@ -26,5 +26,5 @@ import { AuthService } from '../../../../core/services/auth.service';
 export class ActionButtonsComponent {
   private readonly authService = inject(AuthService);
 
-  readonly isAdmin = computed(() => this.authService.getUserRole() === 'ADMIN_CUENTA');
+  readonly isAdmin = computed(() => this.authService.getUserRole() === 'admin');
 }

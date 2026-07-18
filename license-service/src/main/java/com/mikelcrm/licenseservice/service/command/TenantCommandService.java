@@ -94,6 +94,17 @@ public class TenantCommandService {
         payload.put("tenantId", tenantId.toString());
         domainEventPublisher.publish("tenant.activated", tenantId, payload, correlationId.toString());
 
+        // Publish tenant.created event to Kafka topic tenant.lifecycle for SGR provisioning
+        String slug = tenant.getNombre().toLowerCase().replaceAll("[^a-z0-9]+", "-").replaceAll("^-|-$", "");
+        Map<String, Object> lifecyclePayload = new HashMap<>();
+        lifecyclePayload.put("type", "tenant.created");
+        lifecyclePayload.put("tenant_id", tenantId.toString());
+        lifecyclePayload.put("slug", slug);
+        lifecyclePayload.put("nombre", tenant.getNombre());
+        lifecyclePayload.put("admin_email", tenant.getEmailContacto());
+        lifecyclePayload.put("timestamp", java.time.Instant.now().toString());
+        domainEventPublisher.publishRawToTopic("tenant.lifecycle", tenantId, lifecyclePayload);
+
         return CommandResponse.builder()
                 .id(tenantId)
                 .correlationId(correlationId)

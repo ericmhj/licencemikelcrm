@@ -170,23 +170,6 @@ import { environment } from '../../../../environments/environment';
         </div>
       </main>
 
-      <!-- Pantalla de bienvenida (reemplaza todo tras éxito) -->
-      @if (showWelcome()) {
-        <div class="fixed inset-0 z-50 bg-white flex flex-col animate-fadeIn">
-          <header class="bg-primary text-white p-4 text-center">
-            <h1 class="text-2xl font-bold">🎉 ¡Bienvenido a Mikel CRM!</h1>
-            <p class="text-sm opacity-90 mt-1">Tu servicio ha sido activado exitosamente</p>
-          </header>
-          <div class="flex-1 overflow-y-auto p-6 max-w-2xl mx-auto w-full">
-            <pre class="whitespace-pre-wrap font-mono text-sm bg-gray-50 border rounded-lg p-6 leading-relaxed">{{ welcomeDetails() }}</pre>
-          </div>
-          <footer class="p-4 border-t bg-gray-50 flex justify-center gap-4">
-            <button mat-raised-button color="primary" (click)="showWelcome.set(false)" class="min-h-[44px]">
-              Volver al portal
-            </button>
-          </footer>
-        </div>
-      }
     </div>
   `,
   styles: [`
@@ -211,8 +194,6 @@ export class PublicLayoutComponent {
   submitting = signal(false);
   errorMessage = signal<string | null>(null);
   successMessage = signal<string | null>(null);
-  showWelcome = signal(false);
-  welcomeDetails = signal<string>('');
 
   formData = {
     nombre: '',
@@ -323,72 +304,16 @@ export class PublicLayoutComponent {
 
       this.submitting.set(false);
 
-      // Generate welcome details
-      const fecha = new Date().toLocaleDateString('es-ES');
-      const lines = [
-        '═══════════════════════════════════════════════',
-        '   🎉 ¡FELICIDADES POR TU NUEVO SERVICIO!',
-        '═══════════════════════════════════════════════',
-        '',
-        `Fecha de contratación: ${fecha}`,
-        `ID del Tenant: ${tenantId}`,
-        '',
-        '───────────────────────────────────────────────',
-        '   DATOS DE LA EMPRESA',
-        '───────────────────────────────────────────────',
-        `Empresa: ${this.formData.nombre}`,
-        `Email: ${this.formData.email}`,
-        `Modalidad: ${this.formData.modalidad === 'ESTANDAR' ? 'Estándar (400 €)' : 'Personalizada (1.400 €)'}`,
-        `Créditos de bienvenida: ${this.formData.modalidad === 'ESTANDAR' ? '2' : '10'}`,
-        '',
-        '───────────────────────────────────────────────',
-        '   MÓDULOS CONTRATADOS',
-        '───────────────────────────────────────────────',
-      ];
-
-      for (const mod of this.state.selectedModules()) {
-        lines.push(`  ✓ ${mod.nombre} — ${mod.precioMensual.toFixed(2)} €/mes`);
-      }
-
-      const pkgInfo = this.state.selectedPackage();
-      if (pkgInfo) {
-        lines.push('');
-        lines.push('───────────────────────────────────────────────');
-        lines.push('   PAQUETE DE CRÉDITOS');
-        lines.push('───────────────────────────────────────────────');
-        lines.push(`  ✓ ${pkgInfo.nombre}: ${pkgInfo.creditos} créditos + ${pkgInfo.bonus} bonus`);
-        lines.push(`    Precio: ${pkgInfo.precioAnual.toFixed(2)} €/año`);
-      }
-
-      lines.push('');
-      lines.push('───────────────────────────────────────────────');
-      lines.push('   RESUMEN ECONÓMICO');
-      lines.push('───────────────────────────────────────────────');
-      lines.push(`  Total anual: ${this.state.totalAnual().toFixed(2)} €`);
-      lines.push(`  Cuota mensual: ${this.state.cuotaMensual().toFixed(2)} €`);
-      lines.push('');
-      lines.push('───────────────────────────────────────────────');
-      lines.push('   POLÍTICA DE DESCUENTOS');
-      lines.push('───────────────────────────────────────────────');
-      lines.push('  • 10% descuento: pago antes de la fecha límite');
-      lines.push('  • 3% descuento: pago en la fecha límite');
-      lines.push('  • 0% descuento: pago después de la fecha límite');
-      lines.push('');
-      lines.push('───────────────────────────────────────────────');
-      lines.push('   PRÓXIMOS PASOS');
-      lines.push('───────────────────────────────────────────────');
-      lines.push('  1. Recibirás un email de confirmación en breve');
-      lines.push('  2. Tu CRM estará activo de inmediato');
-      lines.push('  3. Primer cobro de cuota: en 30 días');
-      lines.push('');
-      lines.push('═══════════════════════════════════════════════');
-      lines.push('  Gracias por confiar en Mikel CRM');
-      lines.push('═══════════════════════════════════════════════');
-
-      this.welcomeDetails.set(lines.join('\n'));
-      this.showWelcome.set(true);
-      this.showForm.set(false);
-      this.snackBar.open('¡Solicitud procesada exitosamente!', 'OK', { duration: 5000 });
+      // Redirect to confirmation page with tenant access data
+      const slug = tenantResponse.slug || this.formData.nombre.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      this.router.navigate(['/contratacion/confirmacion'], {
+        queryParams: {
+          tenantId,
+          nombre: this.formData.nombre,
+          email: this.formData.email,
+          slug,
+        },
+      });
 
     } catch (err: any) {
       this.submitting.set(false);
