@@ -4,6 +4,11 @@ import { roleGuard } from './core/guards/role.guard';
 
 export const routes: Routes = [
   {
+    path: 'login',
+    loadComponent: () =>
+      import('./features/auth/login.component').then(c => c.LoginComponent),
+  },
+  {
     path: 'contratacion',
     loadChildren: () =>
       import('./features/public-portal/public-portal.routes')

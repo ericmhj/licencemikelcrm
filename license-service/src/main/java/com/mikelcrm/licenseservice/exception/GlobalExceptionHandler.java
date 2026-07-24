@@ -86,6 +86,52 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
+    @ExceptionHandler(FuncionRolesNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleFuncionRolesNotFound(FuncionRolesNotFoundException ex) {
+        log.warn("Funcion-roles not found: {}", ex.getMessage());
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("error", "NOT_FOUND");
+        body.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+    }
+
+    @ExceptionHandler(EmptyRolesException.class)
+    public ResponseEntity<Map<String, Object>> handleEmptyRoles(EmptyRolesException ex) {
+        log.warn("Empty roles: {}", ex.getMessage());
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("error", "EMPTY_ROLES");
+        body.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    @ExceptionHandler(InvalidRoleException.class)
+    public ResponseEntity<Map<String, Object>> handleInvalidRole(InvalidRoleException ex) {
+        log.warn("Invalid role: {}", ex.getMessage());
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("error", "INVALID_ROLE");
+        body.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    @ExceptionHandler(DuplicateCodigoException.class)
+    public ResponseEntity<Map<String, Object>> handleDuplicateCodigo(DuplicateCodigoException ex) {
+        log.warn("Duplicate codigo: {}", ex.getMessage());
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("error", "DUPLICATE_CODIGO");
+        body.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+    }
+
+    @ExceptionHandler(DuplicateRoleSetException.class)
+    public ResponseEntity<Map<String, Object>> handleDuplicateRoleSet(DuplicateRoleSetException ex) {
+        log.warn("Duplicate role set: {}", ex.getMessage());
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("error", "DUPLICATE_ROLE_SET");
+        body.put("message", ex.getMessage());
+        body.put("conflictingCodigo", ex.getConflictingCodigo());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+    }
+
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<Map<String, Object>> handleConstraintViolation(ConstraintViolationException ex) {
         log.warn("Constraint violation: {}", ex.getMessage());

@@ -27,10 +27,26 @@ export class AuthService {
   getUserRole(): UserRole | null {
     const user = this._authState().user;
     if (!user) return null;
-    // Support both 'rol' (License Service JWT) and 'roles' (Keycloak JWT)
+    // Support 'rol' (License Service JWT)
     if (user.rol) return user.rol;
-    if (user.roles && user.roles.length > 0) return user.roles[0] as UserRole;
-    return null;
+    
+    // Collect roles from all possible JWT structures
+    let allRoles: string[] = [];
+    
+    // Direct 'roles' array (some JWT configurations)
+    if (user.roles && user.roles.length > 0) {
+      allRoles = [...allRoles, ...user.roles];
+    }
+    
+    // Keycloak standard: realm_access.roles
+    if (user.realm_access?.roles && user.realm_access.roles.length > 0) {
+      allRoles = [...allRoles, ...user.realm_access.roles];
+    }
+    
+    // Filter to known application roles, return highest priority match
+    const APP_ROLES: UserRole[] = ['platform_admin', 'superusuario', 'admin', 'manager', 'tecnico', 'asistente'];
+    const appRole = APP_ROLES.find(r => allRoles.includes(r));
+    return appRole ?? null;
   }
 
   getTenantId(): string | null {

@@ -10,7 +10,7 @@ export const authGuard: CanActivateFn = () => {
   const token = authService.getToken();
   if (!token) {
     authService.logout();
-    return router.createUrlTree(['/contratacion']);
+    return router.createUrlTree(['/login']);
   }
 
   // Decode and check expiration
@@ -18,16 +18,16 @@ export const authGuard: CanActivateFn = () => {
     const parts = token.split('.');
     if (parts.length !== 3) {
       authService.logout();
-      return router.createUrlTree(['/contratacion']);
+      return router.createUrlTree(['/login']);
     }
     const payload = JSON.parse(atob(parts[1]));
     if (!payload.exp || payload.exp * 1000 < Date.now()) {
       authService.logout();
-      return router.createUrlTree(['/contratacion']);
+      return router.createUrlTree(['/login']);
     }
   } catch {
     authService.logout();
-    return router.createUrlTree(['/contratacion']);
+    return router.createUrlTree(['/login']);
   }
 
   if (authService.isAuthenticated()) {
@@ -35,5 +35,5 @@ export const authGuard: CanActivateFn = () => {
   }
 
   authService.logout();
-  return router.createUrlTree(['/contratacion']);
+  return router.createUrlTree(['/login']);
 };

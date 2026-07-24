@@ -4,6 +4,8 @@ export interface JwtPayload {
   tenant_id?: string;
   rol?: UserRole;
   roles?: string[];
+  realm_access?: { roles: string[] };
+  resource_access?: Record<string, { roles: string[] }>;
   exp: number;
   iat: number;
 }
