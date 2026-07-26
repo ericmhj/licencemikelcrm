@@ -53,6 +53,13 @@ import { AuthService } from '../../../core/services/auth.service';
               <mat-icon matListItemIcon>admin_panel_settings</mat-icon>
               <span matListItemTitle>Funcion-Roles</span>
             </a>
+            <a mat-list-item
+               routerLink="/admin/form_templates"
+               routerLinkActive="active-link"
+               [routerLinkActiveOptions]="{ paths: 'subset', queryParams: 'ignored', fragment: 'ignored', matrixParams: 'ignored' }">
+              <mat-icon matListItemIcon>description</mat-icon>
+              <span matListItemTitle>Formularios Padre</span>
+            </a>
           </mat-nav-list>
         </nav>
 

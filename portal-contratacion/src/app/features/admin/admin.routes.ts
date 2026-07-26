@@ -36,6 +36,21 @@ export const ADMIN_ROUTES: Routes = [
         loadComponent: () =>
           import('./funcion-roles/funcion-roles-form.component').then(c => c.FuncionRolesFormComponent),
       },
+      {
+        path: 'form_templates',
+        loadComponent: () =>
+          import('./form-templates/form-template-list.component').then(c => c.FormTemplateListComponent),
+      },
+      {
+        path: 'form_templates/nuevo',
+        loadComponent: () =>
+          import('./form-templates/form-template-form.component').then(c => c.FormTemplateFormComponent),
+      },
+      {
+        path: 'form_templates/editar/:id',
+        loadComponent: () =>
+          import('./form-templates/form-template-form.component').then(c => c.FormTemplateFormComponent),
+      },
       { path: '', redirectTo: 'planes', pathMatch: 'full' },
     ],
   },
