@@ -1,6 +1,7 @@
 package com.mikelcrm.licenseservice.config;
 
 import com.mikelcrm.licenseservice.payment.PaymentProperties;
+import com.mikelcrm.licenseservice.payment.StripeProperties;
 import com.mikelcrm.licenseservice.security.GatewayHeaderAuthFilter;
 import com.mikelcrm.licenseservice.security.JwtAuthFilter;
 import com.mikelcrm.licenseservice.security.RateLimitFilter;
@@ -16,7 +17,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration
 @EnableWebSecurity
-@EnableConfigurationProperties({JwtProperties.class, RateLimitProperties.class, PaymentProperties.class})
+@EnableConfigurationProperties({JwtProperties.class, RateLimitProperties.class, PaymentProperties.class, StripeProperties.class})
 public class SecurityConfig {
 
     private final JwtProperties jwtProperties;
@@ -37,19 +38,10 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/actuator/**").permitAll()
+                        .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/api/v1/health").permitAll()
-                        .requestMatchers("/api/v1/payments/**").permitAll()
-                        .requestMatchers("/api/v1/tenants").permitAll()
-                        .requestMatchers("/api/v1/tenants/*/apertura").permitAll()
-                        .requestMatchers("/api/v1/tenants/*/contracts").permitAll()
-                        .requestMatchers("/api/v1/tenants/*/credits/packages").permitAll()
-                        .requestMatchers("/api/v1/notifications/**").permitAll()
-                        .requestMatchers("/api/v1/plans").permitAll()
-                        .requestMatchers("/api/v1/plans/**").permitAll()
-                        .requestMatchers("/api/v1/funcion-roles").permitAll()
-                        .requestMatchers("/api/v1/funcion-roles/**").permitAll()
-                        .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
+                        .requestMatchers("/api/v1/payments/webhook").permitAll()
+                        .requestMatchers("/api/v1/webhooks/spei").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(gatewayHeaderAuthFilter(), UsernamePasswordAuthenticationFilter.class)

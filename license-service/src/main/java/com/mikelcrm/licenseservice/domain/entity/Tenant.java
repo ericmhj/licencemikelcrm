@@ -37,6 +37,14 @@ public class Tenant {
     @Column(name = "fecha_alta", nullable = false)
     private LocalDateTime fechaAlta;
 
+    /**
+     * Primer día del mes ya cubierto por un pago mensual (SPEI).
+     * null = el tenant nunca ha pagado. Cada pago lo fija al primer día del mes en curso.
+     * Un tenant se considera al corriente si servicioPagadoHasta >= primer día del mes actual.
+     */
+    @Column(name = "servicio_pagado_hasta")
+    private java.time.LocalDate servicioPagadoHasta;
+
     @Column(name = "fecha_suspension")
     private LocalDateTime fechaSuspension;
 

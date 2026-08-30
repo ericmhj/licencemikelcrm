@@ -13,4 +13,5 @@ public class PaymentRequest {
     @NotNull @DecimalMin("0.01") private BigDecimal amount;
     private String currency;                   // default EUR
     private String description;
+    private String paymentMethodId;            // Stripe.js payment method (optional)
 }

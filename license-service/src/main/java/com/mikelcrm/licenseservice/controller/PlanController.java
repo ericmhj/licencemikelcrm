@@ -81,6 +81,8 @@ public class PlanController {
                 .maxUsuarios(request.maxUsuarios())
                 .rolesAutorizados(request.rolesAutorizados() != null ? "[\"" + String.join("\",\"", request.rolesAutorizados()) + "\"]" : "[]")
                 .precioMensual(request.precioMensual())
+                .costoReporte(request.costoReporte() != null ? request.costoReporte() : 520)
+                .costoPuntoMuestreo(request.costoPuntoMuestreo() != null ? request.costoPuntoMuestreo() : 35)
                 .activo(true)
                 .build();
 
@@ -106,6 +108,8 @@ public class PlanController {
                     if (request.maxUsuarios() != null) plan.setMaxUsuarios(request.maxUsuarios());
                     if (request.rolesAutorizados() != null) plan.setRolesAutorizados("[\"" + String.join("\",\"", request.rolesAutorizados()) + "\"]");
                     if (request.precioMensual() != null) plan.setPrecioMensual(request.precioMensual());
+                    if (request.costoReporte() != null) plan.setCostoReporte(request.costoReporte());
+                    if (request.costoPuntoMuestreo() != null) plan.setCostoPuntoMuestreo(request.costoPuntoMuestreo());
                     planRepository.save(plan);
                     planCacheWarmupService.syncPlanToRedis(plan);
                     return ResponseEntity.ok(plan);
@@ -139,7 +143,9 @@ public class PlanController {
             Integer maxFreeDownloads,
             Integer maxUsuarios,
             List<String> rolesAutorizados,
-            java.math.BigDecimal precioMensual
+            java.math.BigDecimal precioMensual,
+            Integer costoReporte,
+            Integer costoPuntoMuestreo
     ) {}
 
     public record UpdatePlanRequest(
@@ -149,6 +155,8 @@ public class PlanController {
             Integer maxFreeDownloads,
             Integer maxUsuarios,
             List<String> rolesAutorizados,
-            java.math.BigDecimal precioMensual
+            java.math.BigDecimal precioMensual,
+            Integer costoReporte,
+            Integer costoPuntoMuestreo
     ) {}
 }

@@ -3,6 +3,7 @@ package com.mikelcrm.licenseservice.controller;
 import com.mikelcrm.licenseservice.controller.dto.CreateFuncionRolesRequest;
 import com.mikelcrm.licenseservice.controller.dto.FuncionRolesDTO;
 import com.mikelcrm.licenseservice.controller.dto.UpdateFuncionRolesRequest;
+import com.mikelcrm.licenseservice.security.rbac.RequiresPermission;
 import com.mikelcrm.licenseservice.service.FuncionRolesService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -41,6 +42,7 @@ public class FuncionRolesController {
      * POST /api/v1/funcion-roles — Create a new funcion-roles relationship
      */
     @PostMapping
+    @RequiresPermission(recurso = "planes", accion = "crear")
     public ResponseEntity<FuncionRolesDTO> create(@Valid @RequestBody CreateFuncionRolesRequest request) {
         FuncionRolesDTO created = funcionRolesService.create(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
@@ -50,6 +52,7 @@ public class FuncionRolesController {
      * PUT /api/v1/funcion-roles/{codigo} — Update an existing funcion-roles relationship
      */
     @PutMapping("/{codigo}")
+    @RequiresPermission(recurso = "planes", accion = "actualizar")
     public ResponseEntity<FuncionRolesDTO> update(
             @PathVariable String codigo,
             @Valid @RequestBody UpdateFuncionRolesRequest request) {
@@ -61,6 +64,7 @@ public class FuncionRolesController {
      * DELETE /api/v1/funcion-roles/{codigo} — Delete a funcion-roles relationship
      */
     @DeleteMapping("/{codigo}")
+    @RequiresPermission(recurso = "planes", accion = "eliminar")
     public ResponseEntity<Void> delete(@PathVariable String codigo) {
         funcionRolesService.delete(codigo);
         return ResponseEntity.noContent().build();

@@ -28,8 +28,8 @@ import java.util.UUID;
  * - X-License-Id: License ID (from JWT 'license_id' claim) → used as tenantId
  * - X-Plan-Type: Plan type (from JWT 'plan_type' claim) → used as rol
  * 
- * Security: This filter should ONLY be enabled when running behind APISIX.
- * Direct access to the backend without the gateway would bypass authentication.
+ * Security: This filter validates the X-Gateway-Secret header to ensure
+ * the request actually came through APISIX and not directly to the backend.
  */
 public class GatewayHeaderAuthFilter extends OncePerRequestFilter {
 
@@ -39,6 +39,25 @@ public class GatewayHeaderAuthFilter extends OncePerRequestFilter {
     private static final String HEADER_LICENSE_ID = "X-License-Id";
     private static final String HEADER_PLAN_TYPE = "X-Plan-Type";
     private static final String HEADER_USER_ROLE = "X-User-Role";
+    private static final String HEADER_GATEWAY_SECRET = "X-Gateway-Secret";
+    private static final String GATEWAY_SHARED_SECRET;
+
+    static {
+        String secret = System.getenv("GATEWAY_SHARED_SECRET");
+        if (secret == null || secret.isBlank()) {
+            // Fail loudly in production if secret is not configured
+            String profile = System.getProperty("spring.profiles.active", "");
+            String envProfile = System.getenv("SPRING_PROFILES_ACTIVE") != null
+                    ? System.getenv("SPRING_PROFILES_ACTIVE") : "";
+            if (profile.contains("prod") || envProfile.contains("prod")) {
+                throw new IllegalStateException(
+                        "FATAL: GATEWAY_SHARED_SECRET environment variable is required in production");
+            }
+            // Dev fallback only
+            secret = "mikel-gateway-internal-dev-2026";
+        }
+        GATEWAY_SHARED_SECRET = secret;
+    }
 
     private final boolean enabled;
 
@@ -49,11 +68,8 @@ public class GatewayHeaderAuthFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
-        return path.startsWith("/api/v1/plans") ||
-               path.startsWith("/api/v1/health") ||
+        return path.startsWith("/api/v1/health") ||
                path.startsWith("/actuator") ||
-               path.startsWith("/api/v1/payments") ||
-               path.startsWith("/api/v1/notifications") ||
                path.startsWith("/swagger-ui") ||
                path.startsWith("/v3/api-docs");
     }
@@ -72,9 +88,18 @@ public class GatewayHeaderAuthFilter extends OncePerRequestFilter {
         String licenseId = request.getHeader(HEADER_LICENSE_ID);
         String planType = request.getHeader(HEADER_PLAN_TYPE);
         String userRole = request.getHeader(HEADER_USER_ROLE);
+        String gatewaySecret = request.getHeader(HEADER_GATEWAY_SECRET);
 
-        // Only trust gateway headers if X-Consumer-Id is present (injected by APISIX)
+        // Only trust gateway headers if X-Consumer-Id is present AND gateway secret matches
         if (consumerId != null && !consumerId.isBlank()) {
+            // Verify the request came through the gateway (shared secret)
+            if (gatewaySecret == null || !gatewaySecret.equals(GATEWAY_SHARED_SECRET)) {
+                log.warn("Gateway header auth rejected: invalid or missing X-Gateway-Secret from {}",
+                        request.getRemoteAddr());
+                filterChain.doFilter(request, response);
+                return;
+            }
+
             try {
                 UUID userId = UUID.fromString(consumerId);
 

@@ -6,6 +6,7 @@ import com.mikelcrm.licenseservice.service.command.dto.AcquireCreditsRequest;
 import com.mikelcrm.licenseservice.service.command.dto.CommandResponse;
 import com.mikelcrm.licenseservice.service.command.dto.CompensateCreditsRequest;
 import com.mikelcrm.licenseservice.service.command.dto.ConsumeCreditsRequest;
+import com.mikelcrm.licenseservice.service.command.dto.ConsumeReportRequest;
 import com.mikelcrm.licenseservice.service.command.dto.RegisterConsultationRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +44,18 @@ public class CreditCommandController {
             @PathVariable UUID tenantId,
             @Valid @RequestBody ConsumeCreditsRequest request) {
         CommandResponse response = creditCommandService.consumeCredits(tenantId, request);
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+    }
+
+    /**
+     * Consume créditos por la generación de un reporte de estudio.
+     * Costo = costoReporte(plan) + costoPuntoMuestreo(plan) * numeroPuntos.
+     */
+    @PostMapping("/reportes/consumo")
+    public ResponseEntity<CommandResponse> consumeReport(
+            @PathVariable UUID tenantId,
+            @Valid @RequestBody ConsumeReportRequest request) {
+        CommandResponse response = creditCommandService.consumeReport(tenantId, request);
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
     }
 

@@ -9,12 +9,14 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: local
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/license_db
-      SPRING_DATASOURCE_USERNAME: license_user
-      SPRING_DATASOURCE_PASSWORD: license_pass
+      SPRING_DATASOURCE_USERNAME: ${DB_USER:-license_user}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-license_pass}
       SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PASSWORD: license_redis_dev
       SPRING_KAFKA_BOOTSTRAP_SERVERS: license-kafka:9092
       LICENSE_SERVICE_JWT_TRUST_GATEWAY_HEADERS: "true"
       LICENSE_SERVICE_JWT_KEYCLOAK_JWKS_URL: http://keycloak:8080/realms/mikel-crm/protocol/openid-connect/certs
+      LICENSE_SERVICE_JWT_SKIP_VALIDATION: "${JWT_SKIP_VALIDATION:-false}"
       MAIL_HOST: smtp.hostinger.com
       MAIL_PORT: 465
       MAIL_USERNAME: admin@normalia.com.mx
@@ -35,6 +37,7 @@ services:
     networks:
       - license-network
       - mikel-net
+      - keycloak-external
     restart: unless-stopped
 
   postgres:
@@ -59,14 +62,15 @@ services:
     restart: unless-stopped
 
   redis:
-    image: redis:7-alpine
+    image: valkey/valkey:8-alpine
     container_name: license-redis
+    command: redis-server --requirepass license_redis_dev
     ports:
       - "6380:6379"
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "license_redis_dev", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -160,4 +164,7 @@ networks:
     driver: bridge
   mikel-net:
     name: mikel-net
+    driver: bridge
+  keycloak-external:
+    name: keycloak-external
     external: true

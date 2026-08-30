@@ -52,6 +52,11 @@ public class TenantConfinementAspect {
             return joinPoint.proceed();
         }
 
+        // platform_admin administra todos los tenants — se exceptúa del confinamiento
+        if ("platform_admin".equals(tenantAuth.getRol())) {
+            return joinPoint.proceed();
+        }
+
         UUID jwtTenantId = tenantAuth.getTenantId();
 
         if (!jwtTenantId.equals(pathTenantId)) {

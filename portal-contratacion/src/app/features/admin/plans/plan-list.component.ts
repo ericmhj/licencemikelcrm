@@ -67,6 +67,16 @@ import { PlanService, Plan } from '../../../core/services/plan.service';
             <td mat-cell *matCellDef="let plan">\${{ plan.precioMensual | number:'1.2-2' }}</td>
           </ng-container>
 
+          <ng-container matColumnDef="costoReporte">
+            <th mat-header-cell *matHeaderCellDef>Costo/reporte</th>
+            <td mat-cell *matCellDef="let plan">{{ plan.costoReporte }} cr</td>
+          </ng-container>
+
+          <ng-container matColumnDef="costoPunto">
+            <th mat-header-cell *matHeaderCellDef>Costo/punto</th>
+            <td mat-cell *matCellDef="let plan">{{ plan.costoPuntoMuestreo }} cr</td>
+          </ng-container>
+
           <ng-container matColumnDef="acciones">
             <th mat-header-cell *matHeaderCellDef>Acciones</th>
             <td mat-cell *matCellDef="let plan">
@@ -96,7 +106,7 @@ export class PlanListComponent implements OnInit {
   private snackBar = inject(MatSnackBar);
 
   plans: Plan[] = [];
-  displayedColumns = ['codigo', 'nombre', 'creditos', 'usuarios', 'roles', 'precio', 'acciones'];
+  displayedColumns = ['codigo', 'nombre', 'creditos', 'usuarios', 'roles', 'precio', 'costoReporte', 'costoPunto', 'acciones'];
 
   ngOnInit() {
     this.loadPlans();

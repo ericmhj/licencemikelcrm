@@ -36,5 +36,16 @@ export const routes: Routes = [
       import('./shared/components/access-denied/access-denied.component')
         .then(c => c.AccessDeniedComponent),
   },
-  { path: '**', redirectTo: 'contratacion' },
+  {
+    path: 'not-found',
+    loadComponent: () =>
+      import('./shared/components/not-found/not-found.component')
+        .then(c => c.NotFoundComponent),
+  },
+  {
+    path: '**',
+    loadComponent: () =>
+      import('./shared/components/not-found/not-found.component')
+        .then(c => c.NotFoundComponent),
+  },
 ];

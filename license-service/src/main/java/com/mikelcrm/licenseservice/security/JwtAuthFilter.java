@@ -58,26 +58,39 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
-        return path.startsWith("/actuator") ||
+        return path.equals("/actuator/health") ||
                path.startsWith("/api/v1/health") ||
-               path.startsWith("/api/v1/payments") ||
-               path.startsWith("/api/v1/notifications") ||
-               path.startsWith("/api/v1/plans") ||
-               path.startsWith("/api/v1/funcion-roles") ||
-               path.startsWith("/swagger-ui") ||
-               path.startsWith("/v3/api-docs");
+               path.startsWith("/api/v1/payments/webhook");
     }
 
     public JwtAuthFilter(JwtProperties jwtProperties) {
         this.skipValidation = jwtProperties.isSkipValidation();
         this.maxTtlMinutes = jwtProperties.getMaxTtlMinutes();
         this.keycloakJwksUrl = jwtProperties.getKeycloakJwksUrl();
+
+        // SECURITY: Block skipValidation in production environments
         if (skipValidation) {
+            String activeProfile = System.getProperty("spring.profiles.active", "");
+            String envProfile = System.getenv("SPRING_PROFILES_ACTIVE") != null
+                    ? System.getenv("SPRING_PROFILES_ACTIVE") : "";
+            if (activeProfile.contains("prod") || envProfile.contains("prod")) {
+                throw new IllegalStateException(
+                        "FATAL: JWT skip-validation=true is FORBIDDEN in production profiles. " +
+                        "Remove JWT_SKIP_VALIDATION or set it to false.");
+            }
             this.localPublicKey = null;
             log.warn("⚠️  JWT validation is DISABLED (skip-validation=true). This should only be used in development!");
         } else {
-            this.localPublicKey = (jwtProperties.getPublicKey() != null && !jwtProperties.getPublicKey().isBlank())
-                    ? parsePublicKey(jwtProperties.getPublicKey()) : null;
+            PublicKey parsedKey = null;
+            if (jwtProperties.getPublicKey() != null && !jwtProperties.getPublicKey().isBlank()) {
+                try {
+                    parsedKey = parsePublicKey(jwtProperties.getPublicKey());
+                } catch (Exception e) {
+                    log.warn("⚠️  Local JWT public key could not be parsed ({}). " +
+                            "Local JWT validation disabled. Keycloak JWKS will be used instead.", e.getMessage());
+                }
+            }
+            this.localPublicKey = parsedKey;
         }
         if (keycloakJwksUrl != null && !keycloakJwksUrl.isBlank()) {
             log.info("Keycloak JWKS validation enabled: {}", keycloakJwksUrl);
@@ -145,12 +158,42 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
                 // Extract Keycloak-style claims
                 String sub = claims.getSubject();
-                String rol = claims.get("rol", String.class);
+                String rol = null;
+
+                // For Keycloak tokens, check realm_access.roles FIRST (most reliable source)
+                Object realmAccess = claims.get("realm_access");
+                if (realmAccess instanceof Map<?, ?> realmMap) {
+                    Object realmRoles = realmMap.get("roles");
+                    if (realmRoles instanceof List<?> realmRolesList) {
+                        List<String> appRoles = List.of("platform_admin", "superusuario", "admin", "manager", "tecnico", "asistente");
+                        for (String appRole : appRoles) {
+                            if (realmRolesList.contains(appRole)) {
+                                rol = appRole;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // Fallback: explicit "rol" claim
                 if (rol == null) {
-                    // Try roles array
+                    rol = claims.get("rol", String.class);
+                }
+
+                // Fallback: "roles" array
+                if (rol == null) {
                     Object rolesObj = claims.get("roles");
                     if (rolesObj instanceof List<?> rolesList && !rolesList.isEmpty()) {
-                        rol = rolesList.get(0).toString();
+                        List<String> appRoles = List.of("platform_admin", "superusuario", "admin", "manager", "tecnico", "asistente");
+                        for (Object r : rolesList) {
+                            if (r != null && appRoles.contains(r.toString())) {
+                                rol = r.toString();
+                                break;
+                            }
+                        }
+                        if (rol == null) {
+                            rol = rolesList.get(0).toString();
+                        }
                     }
                 }
                 String tenantId = claims.get("tenant_id", String.class);

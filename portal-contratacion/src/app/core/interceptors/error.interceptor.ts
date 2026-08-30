@@ -8,14 +8,13 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const router = inject(Router);
   const authService = inject(AuthService);
 
-  // Don't intercept public endpoints (onboarding flow) or SMT Backend calls
+  // Don't intercept public endpoints (onboarding flow)
   const publicPaths = ['/api/v1/tenants', '/api/v1/payments'];
   const isPublicRequest = publicPaths.some(path => req.url.includes(path));
-  const isSmtRequest = req.url.includes('localhost:3001') || req.url.includes('/api/form-templates');
 
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
-      if (!isPublicRequest && !isSmtRequest) {
+      if (!isPublicRequest) {
         if (error.status === 401) {
           authService.logout();
           router.navigate(['/login']);

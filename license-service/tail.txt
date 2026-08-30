@@ -1,0 +1,5 @@
+2026-08-28T23:16:13.860Z  INFO 1 --- [license-service] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema "public": 20260828
+2026-08-28T23:16:13.863Z  INFO 1 --- [license-service] [           main] o.f.core.internal.command.DbMigrate      : Schema "public" is up to date. No migration necessary.
+2026-08-28T23:16:13.994Z  INFO 1 --- [license-service] [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-08-28T23:16:14.070Z  INFO 1 --- [license-service] [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.5.3.Final
+2026-08-28T23:16:14.115Z  INFO 1 --- [license-service] [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled

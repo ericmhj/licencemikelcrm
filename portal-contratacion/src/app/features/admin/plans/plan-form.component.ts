@@ -53,6 +53,17 @@ const ALL_ROLES = ['tecnico', 'asistente', 'manager', 'admin', 'superusuario'];
             <input type="number" [(ngModel)]="plan.precioMensual" name="precio" required step="0.01" />
           </div>
 
+          <div class="field-row">
+            <div class="field">
+              <label>Costo por reporte (créditos)</label>
+              <input type="number" [(ngModel)]="plan.costoReporte" name="costoReporte" required min="0" />
+            </div>
+            <div class="field">
+              <label>Costo por punto de muestreo (créditos)</label>
+              <input type="number" [(ngModel)]="plan.costoPuntoMuestreo" name="costoPuntoMuestreo" required min="0" />
+            </div>
+          </div>
+
           <div class="field">
             <label>Roles autorizados</label>
             <div class="roles-grid">
@@ -104,6 +115,8 @@ export class PlanFormComponent implements OnInit {
     maxUsuarios: 5,
     rolesAutorizados: ['tecnico'],
     precioMensual: 499,
+    costoReporte: 520,
+    costoPuntoMuestreo: 35,
   };
 
   ngOnInit() {
@@ -121,6 +134,8 @@ export class PlanFormComponent implements OnInit {
             maxUsuarios: p.maxUsuarios,
             rolesAutorizados: [...p.rolesAutorizados],
             precioMensual: p.precioMensual,
+            costoReporte: p.costoReporte ?? 520,
+            costoPuntoMuestreo: p.costoPuntoMuestreo ?? 35,
           };
         },
         error: () => this.snackBar.open('Plan no encontrado', 'Cerrar', { duration: 3000 })

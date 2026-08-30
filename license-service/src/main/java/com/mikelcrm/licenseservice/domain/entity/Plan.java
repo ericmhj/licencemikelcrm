@@ -47,6 +47,22 @@ public class Plan {
     @Column(name = "precio_mensual", nullable = false, precision = 10, scale = 2)
     private BigDecimal precioMensual;
 
+    /**
+     * Créditos que se descuentan de la cartera por cada reporte de estudio generado.
+     * Varía por plan. Valor base: 520.
+     */
+    @Column(name = "costo_reporte", nullable = false)
+    @Builder.Default
+    private Integer costoReporte = 520;
+
+    /**
+     * Créditos que se descuentan de la cartera por cada punto de muestreo del estudio.
+     * Se multiplica por el número de puntos. Varía por plan. Valor base: 35.
+     */
+    @Column(name = "costo_punto_muestreo", nullable = false)
+    @Builder.Default
+    private Integer costoPuntoMuestreo = 35;
+
     @Column(nullable = false)
     @Builder.Default
     private Boolean activo = true;

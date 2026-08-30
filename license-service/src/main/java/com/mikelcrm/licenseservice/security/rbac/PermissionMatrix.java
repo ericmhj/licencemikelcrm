@@ -62,6 +62,12 @@ public class PermissionMatrix {
      * @return true if the action is allowed, false otherwise
      */
     public boolean isAllowed(RolTenant rol, String recurso, String accion) {
+        // platform_admin administra la plataforma completa: acceso total.
+        // (coherente con el bypass de platform_admin en TenantConfinementAspect).
+        if (rol == RolTenant.platform_admin) {
+            return true;
+        }
+
         // Check explicit deny first (deny takes precedence)
         Map<String, Set<String>> rolDenies = DENIES.getOrDefault(rol, Map.of());
         Set<String> deniedActions = rolDenies.getOrDefault(recurso, Set.of());

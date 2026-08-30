@@ -1,4 +1,6 @@
 import { Routes } from '@angular/router';
+import { roleGuard } from '../../core/guards/role.guard';
+import { platformAdminGuard } from '../../core/guards/platform-admin.guard';
 
 export const ADMIN_ROUTES: Routes = [
   {
@@ -37,19 +39,28 @@ export const ADMIN_ROUTES: Routes = [
           import('./funcion-roles/funcion-roles-form.component').then(c => c.FuncionRolesFormComponent),
       },
       {
-        path: 'form_templates',
+        path: 'cartera',
+        canActivate: [platformAdminGuard],
         loadComponent: () =>
-          import('./form-templates/form-template-list.component').then(c => c.FormTemplateListComponent),
+          import('./cartera/cartera-list.component').then(c => c.CarteraListComponent),
       },
       {
-        path: 'form_templates/nuevo',
+        path: 'cartera/:tenantId',
+        canActivate: [platformAdminGuard],
         loadComponent: () =>
-          import('./form-templates/form-template-form.component').then(c => c.FormTemplateFormComponent),
+          import('./cartera/cartera-detail.component').then(c => c.CarteraDetailComponent),
       },
       {
-        path: 'form_templates/editar/:id',
+        path: 'estados-cuenta',
+        canActivate: [platformAdminGuard],
         loadComponent: () =>
-          import('./form-templates/form-template-form.component').then(c => c.FormTemplateFormComponent),
+          import('./estados-cuenta/estado-cuenta-list.component').then(c => c.EstadoCuentaListComponent),
+      },
+      {
+        path: 'estados-cuenta/:tenantId',
+        canActivate: [platformAdminGuard],
+        loadComponent: () =>
+          import('./estados-cuenta/estado-cuenta-detail.component').then(c => c.EstadoCuentaDetailComponent),
       },
       { path: '', redirectTo: 'planes', pathMatch: 'full' },
     ],

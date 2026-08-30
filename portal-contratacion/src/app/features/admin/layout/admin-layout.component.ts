@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, OnDestroy } from '@angular/core';
+import { Component, inject, computed, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet, NavigationError } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -53,13 +53,22 @@ import { AuthService } from '../../../core/services/auth.service';
               <mat-icon matListItemIcon>admin_panel_settings</mat-icon>
               <span matListItemTitle>Funcion-Roles</span>
             </a>
-            <a mat-list-item
-               routerLink="/admin/form_templates"
-               routerLinkActive="active-link"
-               [routerLinkActiveOptions]="{ paths: 'subset', queryParams: 'ignored', fragment: 'ignored', matrixParams: 'ignored' }">
-              <mat-icon matListItemIcon>description</mat-icon>
-              <span matListItemTitle>Formularios Padre</span>
-            </a>
+            @if (isPlatformAdmin()) {
+              <a mat-list-item
+                 routerLink="/admin/cartera"
+                 routerLinkActive="active-link"
+                 [routerLinkActiveOptions]="{ paths: 'subset', queryParams: 'ignored', fragment: 'ignored', matrixParams: 'ignored' }">
+                <mat-icon matListItemIcon>account_balance_wallet</mat-icon>
+                <span matListItemTitle>Cartera</span>
+              </a>
+              <a mat-list-item
+                 routerLink="/admin/estados-cuenta"
+                 routerLinkActive="active-link"
+                 [routerLinkActiveOptions]="{ paths: 'subset', queryParams: 'ignored', fragment: 'ignored', matrixParams: 'ignored' }">
+                <mat-icon matListItemIcon>receipt_long</mat-icon>
+                <span matListItemTitle>Estados de Cuenta</span>
+              </a>
+            }
           </mat-nav-list>
         </nav>
 
@@ -122,6 +131,9 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
   private authService = inject(AuthService);
   private router = inject(Router);
   private navigationErrorSub?: Subscription;
+
+  /** Solo muestra la liga de cartera si el rol es platform_admin */
+  isPlatformAdmin = computed(() => this.authService.getUserRole() === 'platform_admin');
 
   ngOnInit(): void {
     this.navigationErrorSub = this.router.events

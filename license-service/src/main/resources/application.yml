@@ -43,8 +43,9 @@ spring:
   # Redis
   data:
     redis:
-      host: localhost
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
       port: 6379
+      password: ${SPRING_DATA_REDIS_PASSWORD:license_redis_dev}
       timeout: 2000ms
 
   # Kafka
@@ -97,9 +98,16 @@ license-service:
     max-ttl-minutes: 15
     issuer: auth-service
     # Set to true to disable JWT validation in development (when no auth-service is available)
-    skip-validation: "${JWT_SKIP_VALIDATION:true}"
+    skip-validation: "${JWT_SKIP_VALIDATION:false}"
+    # Keycloak JWKS endpoint for validating Keycloak-issued tokens
+    keycloak-jwks-url: "${KEYCLOAK_JWKS_URL:http://localhost:8180/realms/mikel-crm/protocol/openid-connect/certs}"
   payment:
     active-gateway: DUMMY
+  stripe:
+    api-key: "${STRIPE_API_KEY:sk_test_placeholder}"
+    webhook-secret: "${STRIPE_WEBHOOK_SECRET:whsec_placeholder}"
+    currency: mxn
+    publishable-key: "${STRIPE_PUBLISHABLE_KEY:pk_test_placeholder}"
   rate-limit:
     query-max-requests-per-second: 1000
     command-max-requests-per-second: 100

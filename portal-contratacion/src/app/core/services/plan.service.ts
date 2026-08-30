@@ -13,6 +13,8 @@ export interface Plan {
   maxUsuarios: number;
   rolesAutorizados: string[];
   precioMensual: number;
+  costoReporte: number;
+  costoPuntoMuestreo: number;
   activo: boolean;
 }
 
@@ -33,6 +35,8 @@ export interface CreatePlanRequest {
   maxUsuarios: number;
   rolesAutorizados: string[];
   precioMensual: number;
+  costoReporte: number;
+  costoPuntoMuestreo: number;
 }
 
 @Injectable({ providedIn: 'root' })

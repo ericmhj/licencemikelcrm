@@ -1,3 +1,18 @@
+# =============================================================================
+# Portal Contratación — Compose de DESARROLLO STANDALONE
+# =============================================================================
+# IMPORTANTE: El portal ya está definido en el compose principal:
+#   c:\dev\licencesmikel\license-service\docker-compose.yml (servicio: portal)
+#
+# Este archivo solo es útil para desarrollo aislado del frontend SIN backend.
+# Para el stack completo, usa:
+#   cd c:\dev\licencesmikel\license-service
+#   docker compose up -d --build
+#
+# Si necesitas levantar SOLO el portal (backend ya corriendo por separado):
+#   docker compose up -d --build
+# =============================================================================
+
 services:
   portal:
     build: .
@@ -9,5 +24,5 @@ services:
 
 networks:
   license-network:
-    external: true
     name: license-service_license-network
+    external: true
