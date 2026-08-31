@@ -55,6 +55,13 @@ import { AuthService } from '../../../core/services/auth.service';
             </a>
             @if (isPlatformAdmin()) {
               <a mat-list-item
+                 routerLink="/admin/planesTenants"
+                 routerLinkActive="active-link"
+                 [routerLinkActiveOptions]="{ paths: 'subset', queryParams: 'ignored', fragment: 'ignored', matrixParams: 'ignored' }">
+                <mat-icon matListItemIcon>assignment_ind</mat-icon>
+                <span matListItemTitle>Planes por Tenant</span>
+              </a>
+              <a mat-list-item
                  routerLink="/admin/cartera"
                  routerLinkActive="active-link"
                  [routerLinkActiveOptions]="{ paths: 'subset', queryParams: 'ignored', fragment: 'ignored', matrixParams: 'ignored' }">

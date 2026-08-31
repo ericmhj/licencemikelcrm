@@ -24,6 +24,12 @@ export const ADMIN_ROUTES: Routes = [
           import('./plans/plan-form.component').then(c => c.PlanFormComponent),
       },
       {
+        path: 'planesTenants',
+        canActivate: [platformAdminGuard],
+        loadComponent: () =>
+          import('./planes-tenants/planes-tenants.component').then(c => c.PlanesTenantsComponent),
+      },
+      {
         path: 'funcion_roles',
         loadComponent: () =>
           import('./funcion-roles/funcion-roles-list.component').then(c => c.FuncionRolesListComponent),

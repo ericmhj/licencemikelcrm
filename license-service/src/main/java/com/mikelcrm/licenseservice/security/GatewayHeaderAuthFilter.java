@@ -63,6 +63,7 @@ public class GatewayHeaderAuthFilter extends OncePerRequestFilter {
 
     public GatewayHeaderAuthFilter(boolean enabled) {
         this.enabled = enabled;
+        log.info("GatewayHeaderAuthFilter inicializado: enabled={}", enabled);
     }
 
     @Override
@@ -80,6 +81,7 @@ public class GatewayHeaderAuthFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
 
         if (!enabled) {
+            log.debug("GatewayHeaderAuthFilter deshabilitado (enabled=false), path={}", request.getRequestURI());
             filterChain.doFilter(request, response);
             return;
         }

@@ -50,4 +50,19 @@ public class TenantCommandController {
         CommandResponse response = tenantCommandService.cancelTenant(tenantId);
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
     }
+
+    /**
+     * Actualiza atributos del tenant (nombre y/o plan). Se usa para asignar el
+     * plan a un tenant desde el portal de administración (planesTenants).
+     */
+    @PatchMapping("/{tenantId}")
+    public ResponseEntity<CommandResponse> updateTenant(
+            @PathVariable UUID tenantId,
+            @RequestBody UpdateTenantRequest request) {
+        CommandResponse response = tenantCommandService.updateTenant(
+                tenantId, request.nombre(), request.planId());
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+    }
+
+    public record UpdateTenantRequest(String nombre, UUID planId) {}
 }

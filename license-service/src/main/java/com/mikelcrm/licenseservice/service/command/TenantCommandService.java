@@ -40,6 +40,7 @@ public class TenantCommandService {
     private final CuotaAlmacenamientoRepository cuotaAlmacenamientoRepository;
     private final CacheInvalidationService cacheInvalidationService;
     private final DomainEventPublisher domainEventPublisher;
+    private final com.mikelcrm.licenseservice.domain.repository.PlanRepository planRepository;
 
     private static final Map<EstadoTenant, Set<EstadoTenant>> ALLOWED_TRANSITIONS = Map.of(
             EstadoTenant.ONBOARDING, Set.of(EstadoTenant.ACTIVE),
@@ -66,9 +67,10 @@ public class TenantCommandService {
         tenantRepository.save(tenant);
         log.info("Created tenant {} in ONBOARDING state. CorrelationId: {}", tenantId, correlationId);
 
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("tenantId", tenantId.toString());
-        payload.put("nombre", request.getNombre());
+        // El evento tenant.onboarded dispara la creación del espejo del tenant en SMT
+        // (en estado onboarding) en el mismo instante en que se crea aquí.
+        // Payload espejo completo (slug, plan, estado, config) para poblar public.tenants.
+        Map<String, Object> payload = buildTenantMirrorPayload(tenant);
         payload.put("modalidad", request.getModalidadApertura().name());
         domainEventPublisher.publish("tenant.onboarded", tenantId, payload, correlationId.toString());
 
@@ -90,20 +92,11 @@ public class TenantCommandService {
         UUID correlationId = UUID.randomUUID();
         log.info("Activated tenant {}. CorrelationId: {}", tenantId, correlationId);
 
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("tenantId", tenantId.toString());
+        // tenant.activated marca el espejo en SMT como 'active'.
+        // Se publica al topic configurado (license-events), el mismo que consume SMT.
+        // Payload espejo completo para que SMT pueda provisionar/reconciliar.
+        Map<String, Object> payload = buildTenantMirrorPayload(tenant);
         domainEventPublisher.publish("tenant.activated", tenantId, payload, correlationId.toString());
-
-        // Publish tenant.created event to Kafka topic tenant.lifecycle for SGR provisioning
-        String slug = tenant.getNombre().toLowerCase().replaceAll("[^a-z0-9]+", "-").replaceAll("^-|-$", "");
-        Map<String, Object> lifecyclePayload = new HashMap<>();
-        lifecyclePayload.put("type", "tenant.created");
-        lifecyclePayload.put("tenant_id", tenantId.toString());
-        lifecyclePayload.put("slug", slug);
-        lifecyclePayload.put("nombre", tenant.getNombre());
-        lifecyclePayload.put("admin_email", tenant.getEmailContacto());
-        lifecyclePayload.put("timestamp", java.time.Instant.now().toString());
-        domainEventPublisher.publishRawToTopic("tenant.lifecycle", tenantId, lifecyclePayload);
 
         return CommandResponse.builder()
                 .id(tenantId)
@@ -124,8 +117,7 @@ public class TenantCommandService {
         UUID correlationId = UUID.randomUUID();
         log.info("Suspended tenant {}. CorrelationId: {}", tenantId, correlationId);
 
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("tenantId", tenantId.toString());
+        Map<String, Object> payload = buildTenantMirrorPayload(tenant);
         payload.put("motivoSuspension", "cuota_impagada");
         domainEventPublisher.publish("tenant.suspended", tenantId, payload, correlationId.toString());
 
@@ -178,8 +170,7 @@ public class TenantCommandService {
         UUID correlationId = UUID.randomUUID();
         log.info("Reactivated tenant {}. Monto paid: {}. CorrelationId: {}", tenantId, request.getMontoEsperado(), correlationId);
 
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("tenantId", tenantId.toString());
+        Map<String, Object> payload = buildTenantMirrorPayload(tenant);
         payload.put("montoPagado", request.getMontoEsperado().toPlainString());
         domainEventPublisher.publish("tenant.reactivated", tenantId, payload, correlationId.toString());
 
@@ -202,9 +193,49 @@ public class TenantCommandService {
         UUID correlationId = UUID.randomUUID();
         log.info("Cancelled tenant {}. CorrelationId: {}", tenantId, correlationId);
 
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("tenantId", tenantId.toString());
+        Map<String, Object> payload = buildTenantMirrorPayload(tenant);
         domainEventPublisher.publish("tenant.cancelled", tenantId, payload, correlationId.toString());
+
+        return CommandResponse.builder()
+                .id(tenantId)
+                .correlationId(correlationId)
+                .build();
+    }
+
+    /**
+     * Actualiza atributos del tenant (nombre y/o plan) y propaga el cambio a SMT
+     * vía el evento tenant.updated para mantener las columnas espejo consistentes.
+     * No cambia el estado ni el slug (el slug es inmutable tras la creación).
+     *
+     * @param nombre nuevo nombre (null = sin cambio)
+     * @param planId nuevo plan (null = sin cambio)
+     */
+    @Transactional
+    public CommandResponse updateTenant(UUID tenantId, String nombre, UUID planId) {
+        Tenant tenant = findTenant(tenantId);
+
+        boolean changed = false;
+        if (nombre != null && !nombre.isBlank() && !nombre.equals(tenant.getNombre())) {
+            tenant.setNombre(nombre);
+            changed = true;
+        }
+        if (planId != null && !planId.equals(tenant.getPlanId())) {
+            tenant.setPlanId(planId);
+            changed = true;
+        }
+
+        UUID correlationId = UUID.randomUUID();
+        if (!changed) {
+            log.info("updateTenant {}: sin cambios. CorrelationId: {}", tenantId, correlationId);
+            return CommandResponse.builder().id(tenantId).correlationId(correlationId).build();
+        }
+
+        tenantRepository.save(tenant);
+        cacheInvalidationService.invalidateAccessCache(tenantId);
+        log.info("Updated tenant {} (nombre/plan). CorrelationId: {}", tenantId, correlationId);
+
+        Map<String, Object> payload = buildTenantMirrorPayload(tenant);
+        domainEventPublisher.publish("tenant.updated", tenantId, payload, correlationId.toString());
 
         return CommandResponse.builder()
                 .id(tenantId)
@@ -240,5 +271,55 @@ public class TenantCommandService {
     private Tenant findTenant(UUID tenantId) {
         return tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new TenantNotFoundException(tenantId));
+    }
+
+    /**
+     * Construye el payload espejo consistente para SMT desde la fuente de verdad.
+     * Incluye identidad, slug, plan (código), estado y snapshot de metadatos (config).
+     * Se usa en todos los eventos de ciclo de vida para poblar public.tenants.
+     */
+    private Map<String, Object> buildTenantMirrorPayload(Tenant tenant) {
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("tenantId", tenant.getId().toString());
+        payload.put("tenant_id", tenant.getId().toString());
+        payload.put("nombre", tenant.getNombre());
+        payload.put("slug", toSlug(tenant.getNombre()));
+        payload.put("admin_email", tenant.getEmailContacto());
+        payload.put("estado", tenant.getEstado().name());
+
+        // Resolver el código del plan (SMT sincroniza plan por código).
+        if (tenant.getPlanId() != null) {
+            planRepository.findById(tenant.getPlanId())
+                    .ifPresent(plan -> payload.put("plan_codigo", plan.getCodigo()));
+        }
+
+        // Snapshot de metadatos de solo lectura para public.tenants.config.
+        Map<String, Object> config = new HashMap<>();
+        config.put("email_contacto", tenant.getEmailContacto());
+        if (tenant.getModalidadReporte() != null) {
+            config.put("modalidad_reporte", tenant.getModalidadReporte().name());
+        }
+        if (tenant.getFechaAlta() != null) {
+            config.put("fecha_alta", tenant.getFechaAlta().toString());
+        }
+        payload.put("config", config);
+
+        return payload;
+    }
+
+    /**
+     * Deriva el slug a partir del nombre del tenant.
+     * DEBE coincidir con deriveSlug() de SMT (src/lib/slug.ts) para que la
+     * correlación por slug (nombre de schema) sea consistente entre ambos sistemas:
+     * minúsculas, se eliminan acentos/diacríticos, no-alfanuméricos -> '-',
+     * guiones colapsados y recortados en los extremos.
+     */
+    private static String toSlug(String nombre) {
+        String normalized = java.text.Normalizer.normalize(nombre, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", ""); // elimina diacríticos (acentos)
+        return normalized.toLowerCase()
+                .replaceAll("[^a-z0-9]+", "-")
+                .replaceAll("-{2,}", "-")
+                .replaceAll("^-|-$", "");
     }
 }

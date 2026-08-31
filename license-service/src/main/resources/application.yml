@@ -99,6 +99,9 @@ license-service:
     issuer: auth-service
     # Set to true to disable JWT validation in development (when no auth-service is available)
     skip-validation: "${JWT_SKIP_VALIDATION:false}"
+    # Confía en los headers inyectados por el gateway (X-Consumer-Id, X-Gateway-Secret).
+    # Requerido para llamadas servicio-a-servicio (p.ej. cobro variable desde SMT).
+    trust-gateway-headers: "${LICENSE_SERVICE_JWT_TRUST_GATEWAY_HEADERS:false}"
     # Keycloak JWKS endpoint for validating Keycloak-issued tokens
     keycloak-jwks-url: "${KEYCLOAK_JWKS_URL:http://localhost:8180/realms/mikel-crm/protocol/openid-connect/certs}"
   payment:
@@ -116,3 +119,6 @@ license-service:
     cache-ttl-seconds: 300
   kafka:
     topic: license-events
+  outbox:
+    # Intervalo del relay del transactional outbox hacia Kafka.
+    poll-interval-ms: ${OUTBOX_POLL_INTERVAL_MS:2000}

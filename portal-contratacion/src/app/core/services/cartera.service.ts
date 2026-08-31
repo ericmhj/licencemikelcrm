@@ -78,4 +78,17 @@ export class CarteraService {
       )
       .pipe(timeout(this.TIMEOUT));
   }
+
+  /**
+   * Asigna/cambia el plan de un tenant. Solo platform_admin.
+   * El license-service actualiza tenant.plan_id y propaga el cambio a SMT.
+   */
+  updateTenantPlan(tenantId: string, planId: string): Observable<{ id: string; correlationId: string }> {
+    return this.http
+      .patch<{ id: string; correlationId: string }>(
+        `${this.baseUrl}/tenants/${tenantId}`,
+        { planId },
+      )
+      .pipe(timeout(this.TIMEOUT));
+  }
 }
