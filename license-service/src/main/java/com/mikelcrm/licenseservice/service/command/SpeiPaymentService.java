@@ -31,6 +31,7 @@ public class SpeiPaymentService {
     private final PlanRepository planRepository;
     private final TenantRepository tenantRepository;
     private final EstadoCuentaService estadoCuentaService;
+    private final com.mikelcrm.licenseservice.domain.repository.MensualidadTenantRepository mensualidadRepository;
     private final com.mikelcrm.licenseservice.service.cache.CacheInvalidationService cacheInvalidationService;
     private final DomainEventPublisher domainEventPublisher;
 
@@ -99,62 +100,78 @@ public class SpeiPaymentService {
                 .build();
         pago = pagoSpeiRepository.save(pago);
 
-        // 4. Aplicar según tipo de cobro
-        if (tipoCobro == TipoCobro.FIJO_MENSUAL) {
-            aplicarCobroFijoMensual(pago, tenant, monto);
-        } else {
-            aplicarAbonoVariablePrepago(pago, tenant, monto);
-        }
+        // 4. Aplicar en cascada: renta mensual primero, excedente a saldo a favor.
+        //    Con CLABE única por tenant, el tipo de CLABE ya no determina el destino.
+        aplicarCobroFijoMensual(pago, tenant, monto);
 
         return pago;
     }
 
     /**
-     * Cobro fijo mensual: se valida contra el PLAN del tenant (no contra un cobro
-     * pre-generado; ya no se programan cobros). El pago:
-     *  - Marca el mes en curso como pagado (servicioPagadoHasta).
-     *  - Otorga los créditos del plan y registra el ABONO en el estado de cuenta.
-     *  - Reactiva al tenant si estaba SUSPENDED por impago.
-     * Se acepta cualquier día/hora. Siempre se cobra el mes completo.
+     * Aplica un pago recibido en cascada (CLABE única por tenant):
+     *   1. RENTA: cubre las mensualidades PENDIENTE completas posibles, de la más
+     *      antigua a la más reciente (monto ÷ mensualidad del plan). Cada mes cubierto
+     *      se registra como PAGO_RENTA y habilita el servicio.
+     *   2. EXCEDENTE: el sobrante (remanente < 1 mensualidad o todo el pago si no hay
+     *      mensualidades pendientes) se abona como SALDO A FAVOR (créditos, 1 MXN = 1 crédito).
+     *
+     * Si el tenant no tiene plan, no se puede calcular la renta: todo el pago va a
+     * saldo a favor.
      */
     private void aplicarCobroFijoMensual(PagoSpeiRecibido pago, Tenant tenant, BigDecimal monto) {
-        // Resolver el plan del tenant
-        if (tenant.getPlanId() == null) {
-            log.warn("[SPEI] Pago mensual recibido pero el tenant {} no tiene plan asignado", tenant.getId());
-            pago.setEstado(EstadoPagoSpei.RECHAZADO);
-            pagoSpeiRepository.save(pago);
-            return;
+        BigDecimal restante = monto;
+        int mesesPagados = 0;
+        java.time.LocalDate ultimoPeriodoPagado = tenant.getServicioPagadoHasta();
+
+        Plan plan = tenant.getPlanId() != null
+                ? planRepository.findById(tenant.getPlanId()).orElse(null)
+                : null;
+        BigDecimal mensualidad = (plan != null) ? plan.getPrecioMensual() : null;
+
+        // ── 1. RENTA: cubrir meses completos posibles ──────────────────────────
+        if (mensualidad != null && mensualidad.signum() > 0) {
+            // Asegurar que existan las mensualidades desde el alta hasta el mes actual.
+            generarMensualidadesFaltantes(tenant, mensualidad);
+
+            List<MensualidadTenant> pendientes = mensualidadRepository.findPendientesOrdenadas(tenant.getId());
+            for (MensualidadTenant m : pendientes) {
+                if (restante.compareTo(mensualidad) < 0) break; // ya no alcanza un mes completo
+                m.setEstado("PAGADA");
+                m.setFechaPago(LocalDateTime.now());
+                m.setPagoSpeiId(pago.getId());
+                m.setMonto(mensualidad);
+                m.setConcepto("Pago Renta mensualidad CRM");
+                mensualidadRepository.save(m);
+
+                estadoCuentaService.registrarPagoRenta(
+                        tenant,
+                        mensualidad,
+                        "Pago Renta mensualidad CRM - " + m.getPeriodoMes(),
+                        pago.getClaveRastreo(),
+                        pago.getClaveRastreo(),
+                        m.getPeriodoMes().toString(),
+                        pago.getId()
+                );
+
+                if (ultimoPeriodoPagado == null || m.getPeriodoMes().isAfter(ultimoPeriodoPagado)) {
+                    ultimoPeriodoPagado = m.getPeriodoMes();
+                }
+                restante = restante.subtract(mensualidad);
+                mesesPagados++;
+            }
+        } else {
+            log.info("[SPEI] Tenant {} sin plan/mensualidad válida; todo el pago va a saldo a favor", tenant.getId());
         }
 
-        Plan plan = planRepository.findById(tenant.getPlanId()).orElse(null);
-        if (plan == null) {
-            log.warn("[SPEI] Plan {} no encontrado para tenant {}", tenant.getPlanId(), tenant.getId());
-            pago.setEstado(EstadoPagoSpei.RECHAZADO);
-            pagoSpeiRepository.save(pago);
-            return;
+        // ── 2. Avanzar servicio pagado hasta y reactivar si quedó al corriente ──
+        if (ultimoPeriodoPagado != null) {
+            tenant.setServicioPagadoHasta(ultimoPeriodoPagado);
         }
-
-        BigDecimal montoEsperado = plan.getPrecioMensual();
-
-        // Validar que el monto cubra la mensualidad completa (sobrepago se ignora)
-        if (monto.compareTo(montoEsperado) < 0) {
-            log.warn("[SPEI] Monto insuficiente para mensualidad. Esperado: {}, Recibido: {}, Tenant: {}",
-                    montoEsperado, monto, tenant.getId());
-            pago.setEstado(EstadoPagoSpei.RECHAZADO);
-            pagoSpeiRepository.save(pago);
-            return;
-        }
-
-        java.time.LocalDate periodoMes = java.time.LocalDate.now().withDayOfMonth(1);
-
-        // Otorgar créditos del plan
-        BigDecimal creditosAOtorgar = BigDecimal.valueOf(plan.getCreditosMensuales());
-        otorgarCreditos(tenant, creditosAOtorgar, "Recarga mensual - " + plan.getNombre());
-
-        // Marcar el mes como pagado y reactivar si estaba suspendido
-        tenant.setServicioPagadoHasta(periodoMes);
         boolean reactivado = false;
-        if (tenant.getEstado() == EstadoTenant.SUSPENDED) {
+        java.time.LocalDate mesActual = java.time.LocalDate.now().withDayOfMonth(1);
+        boolean alCorriente = tenant.getServicioPagadoHasta() != null
+                && !tenant.getServicioPagadoHasta().isBefore(mesActual);
+        if (tenant.getEstado() == EstadoTenant.SUSPENDED && alCorriente) {
             tenant.setEstado(EstadoTenant.ACTIVE);
             tenant.setFechaSuspension(null);
             reactivado = true;
@@ -164,57 +181,56 @@ public class SpeiPaymentService {
             cacheInvalidationService.invalidateAccessCache(tenant.getId());
         }
 
-        // Actualizar pago
+        // ── 3. EXCEDENTE: abonar el sobrante como saldo a favor (créditos) ──────
+        if (restante.signum() > 0) {
+            otorgarCreditos(tenant, restante, "Saldo a favor (excedente de pago)");
+            estadoCuentaService.registrarAbono(
+                    tenant,
+                    restante,
+                    "Saldo a favor (excedente de pago)",
+                    pago.getClaveRastreo(),
+                    pago.getClaveRastreo(),
+                    null,
+                    null,
+                    pago.getId()
+            );
+        }
+
+        // ── 4. Actualizar el pago SPEI ──────────────────────────────────────────
         pago.setEstado(EstadoPagoSpei.APLICADO);
-        pago.setCreditosOtorgados(creditosAOtorgar);
+        pago.setCreditosOtorgados(restante); // solo el excedente se convirtió en créditos
         pago.setAplicadoEn(LocalDateTime.now());
         pagoSpeiRepository.save(pago);
 
-        // Registrar en estado de cuenta del tenant
-        estadoCuentaService.registrarAbono(
-                tenant,
-                monto,
-                "Pago mensual - " + plan.getNombre() + " - " + periodoMes,
-                pago.getClaveRastreo(),
-                pago.getClaveRastreo(),
-                periodoMes.toString(),
-                null,
-                pago.getId()
-        );
-
-        log.info("[SPEI] Mensualidad aplicada: tenant={}, periodo={}, créditos={}, reactivado={}",
-                tenant.getId(), periodoMes, creditosAOtorgar, reactivado);
+        log.info("[SPEI] Pago aplicado: tenant={}, mesesRenta={}, excedenteCreditos={}, servicioPagadoHasta={}, reactivado={}",
+                tenant.getId(), mesesPagados, restante, tenant.getServicioPagadoHasta(), reactivado);
     }
 
     /**
-     * Abono variable prepago: convierte el monto a créditos (1 MXN = 1 crédito).
+     * Genera las filas de mensualidad faltantes desde el alta del tenant (o desde
+     * la última registrada) hasta el mes actual, con el monto de la mensualidad.
      */
-    private void aplicarAbonoVariablePrepago(PagoSpeiRecibido pago, Tenant tenant, BigDecimal monto) {
-        // Conversión: 1 MXN = 1 crédito (configurable en el futuro)
-        BigDecimal creditos = monto;
+    private void generarMensualidadesFaltantes(Tenant tenant, BigDecimal mensualidad) {
+        java.time.LocalDate mesActual = java.time.LocalDate.now().withDayOfMonth(1);
+        java.time.LocalDate cursor = tenant.getFechaAlta() != null
+                ? tenant.getFechaAlta().toLocalDate().withDayOfMonth(1)
+                : mesActual;
 
-        otorgarCreditos(tenant, creditos, "Abono prepago SPEI");
-
-        pago.setEstado(EstadoPagoSpei.APLICADO);
-        pago.setCreditosOtorgados(creditos);
-        pago.setAplicadoEn(LocalDateTime.now());
-        pagoSpeiRepository.save(pago);
-
-        // Registrar en estado de cuenta del tenant
-        estadoCuentaService.registrarAbono(
-                tenant,
-                monto,
-                "Abono prepago SPEI",
-                pago.getClaveRastreo(),
-                pago.getClaveRastreo(),
-                null,
-                null,
-                pago.getId()
-        );
-
-        log.info("[SPEI] Abono prepago aplicado: tenant={}, monto={}, créditos={}",
-                tenant.getId(), monto, creditos);
+        while (!cursor.isAfter(mesActual)) {
+            if (!mensualidadRepository.existsByTenantIdAndPeriodoMes(tenant.getId(), cursor)) {
+                MensualidadTenant m = MensualidadTenant.builder()
+                        .tenant(tenant)
+                        .periodoMes(cursor)
+                        .monto(mensualidad)
+                        .estado("PENDIENTE")
+                        .concepto("Pago Renta mensualidad CRM")
+                        .build();
+                mensualidadRepository.save(m);
+            }
+            cursor = cursor.plusMonths(1);
+        }
     }
+
 
     /**
      * Suma créditos al paquete activo del tenant, respetando el tope de 25,000.

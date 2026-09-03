@@ -45,6 +45,12 @@ export const ADMIN_ROUTES: Routes = [
           import('./funcion-roles/funcion-roles-form.component').then(c => c.FuncionRolesFormComponent),
       },
       {
+        path: 'cobros',
+        canActivate: [platformAdminGuard],
+        loadComponent: () =>
+          import('./cobros/cobros.component').then(c => c.CobrosComponent),
+      },
+      {
         path: 'cartera',
         canActivate: [platformAdminGuard],
         loadComponent: () =>

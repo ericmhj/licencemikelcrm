@@ -62,6 +62,13 @@ import { AuthService } from '../../../core/services/auth.service';
                 <span matListItemTitle>Planes por Tenant</span>
               </a>
               <a mat-list-item
+                 routerLink="/admin/cobros"
+                 routerLinkActive="active-link"
+                 [routerLinkActiveOptions]="{ paths: 'subset', queryParams: 'ignored', fragment: 'ignored', matrixParams: 'ignored' }">
+                <mat-icon matListItemIcon>payments</mat-icon>
+                <span matListItemTitle>Cobros</span>
+              </a>
+              <a mat-list-item
                  routerLink="/admin/cartera"
                  routerLinkActive="active-link"
                  [routerLinkActiveOptions]="{ paths: 'subset', queryParams: 'ignored', fragment: 'ignored', matrixParams: 'ignored' }">

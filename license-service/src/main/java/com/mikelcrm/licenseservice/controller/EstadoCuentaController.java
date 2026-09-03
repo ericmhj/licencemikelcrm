@@ -66,6 +66,11 @@ public class EstadoCuentaController {
                 .map(m -> m.getMonto().abs())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+        BigDecimal totalPagosRenta = todos.stream()
+                .filter(m -> m.getTipo() == TipoMovimientoEdoCuenta.PAGO_RENTA)
+                .map(m -> m.getMonto().abs())
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
         // Adeudo de la mensualidad del mes en curso (dato calculado, NO persistido:
         // el estado de cuenta solo registra dinero real. El adeudo se computa
         // comparando servicioPagadoHasta contra el mes actual).
@@ -93,6 +98,7 @@ public class EstadoCuentaController {
         resumen.put("saldoActual", saldoActual);
         resumen.put("totalAbonos", totalAbonos);
         resumen.put("totalCargos", totalCargos);
+        resumen.put("totalPagosRenta", totalPagosRenta);
         // Adeudo de mensualidad
         resumen.put("mensualidad", montoMensual);
         resumen.put("mesPagado", mesPagado);

@@ -126,6 +126,7 @@ import { MovimientoEdoCuenta, TenantEdoCuentaResumen } from '../../../core/model
                 <mat-label>Tipo</mat-label>
                 <mat-select [(ngModel)]="filterTipo" (selectionChange)="applyFilters()">
                   <mat-option value="">Todos</mat-option>
+                  <mat-option value="PAGO_RENTA">Pago Renta CRM</mat-option>
                   <mat-option value="ABONO">Abonos</mat-option>
                   <mat-option value="CARGO">Cargos</mat-option>
                 </mat-select>
@@ -148,7 +149,7 @@ import { MovimientoEdoCuenta, TenantEdoCuentaResumen } from '../../../core/model
                 <th mat-header-cell *matHeaderCellDef>Tipo</th>
                 <td mat-cell *matCellDef="let m">
                   <span [class]="'tipo-badge tipo-' + m.tipo">
-                    {{ m.tipo === 'ABONO' ? '📥' : '📤' }} {{ m.tipo }}
+                    {{ tipoIcono(m.tipo) }} {{ tipoLabel(m.tipo) }}
                   </span>
                 </td>
               </ng-container>
@@ -183,7 +184,7 @@ import { MovimientoEdoCuenta, TenantEdoCuentaResumen } from '../../../core/model
 
               <ng-container matColumnDef="fecha">
                 <th mat-header-cell *matHeaderCellDef>Fecha</th>
-                <td mat-cell *matCellDef="let m">{{ m.registradoEn | date:'short' }}</td>
+                <td mat-cell *matCellDef="let m">{{ m.registradoEn | date:'short':'-0600':'es-MX' }}</td>
               </ng-container>
 
               <tr mat-header-row *matHeaderRowDef="columns"></tr>
@@ -238,6 +239,7 @@ import { MovimientoEdoCuenta, TenantEdoCuentaResumen } from '../../../core/model
     .tipo-badge { padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
     .tipo-ABONO { background: #dcfce7; color: #166534; }
     .tipo-CARGO { background: #fef2f2; color: #991b1b; }
+    .tipo-PAGO_RENTA { background: #eef2ff; color: #3730a3; }
     .amount-positive { color: #16a34a; font-weight: 600; }
     .amount-negative { color: #dc2626; font-weight: 600; }
     .ref-badge { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 11px; }
@@ -263,6 +265,17 @@ export class EstadoCuentaDetailComponent implements OnInit {
   filterHasta = '';
 
   columns = ['tipo', 'concepto', 'monto', 'saldoResultante', 'referencia', 'fecha'];
+
+  tipoIcono(tipo: string): string {
+    if (tipo === 'ABONO') return '📥';
+    if (tipo === 'PAGO_RENTA') return '🧾';
+    return '📤';
+  }
+
+  tipoLabel(tipo: string): string {
+    if (tipo === 'PAGO_RENTA') return 'PAGO RENTA';
+    return tipo;
+  }
 
   ngOnInit(): void {
     this.tenantId = this.route.snapshot.paramMap.get('tenantId') || '';

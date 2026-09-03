@@ -94,6 +94,44 @@ public class EstadoCuentaService {
     }
 
     /**
+     * Registra un PAGO DE RENTA mensual del CRM en el estado de cuenta.
+     * No es un abono a favor: no incrementa el saldo de crédito (saldoResultante
+     * se mantiene). Sirve como registro contable del pago que habilita el servicio.
+     */
+    @Transactional
+    public EstadoCuentaTenant registrarPagoRenta(
+            Tenant tenant,
+            BigDecimal monto,
+            String concepto,
+            String referencia,
+            String claveRastreo,
+            String periodoMes,
+            UUID pagoSpeiId) {
+
+        // El pago de renta no altera el saldo de crédito (cartera).
+        BigDecimal saldoActual = obtenerSaldoActual(tenant.getId());
+
+        EstadoCuentaTenant movimiento = EstadoCuentaTenant.builder()
+                .tenant(tenant)
+                .tipo(TipoMovimientoEdoCuenta.PAGO_RENTA)
+                .monto(monto)
+                .saldoResultante(saldoActual)
+                .concepto(concepto)
+                .referencia(referencia)
+                .claveRastreo(claveRastreo)
+                .periodoMes(periodoMes)
+                .pagoSpeiId(pagoSpeiId)
+                .build();
+
+        movimiento = estadoCuentaRepository.save(movimiento);
+
+        log.info("[EdoCuenta] PAGO_RENTA registrado: tenant={}, monto={}, periodo={}, concepto={}",
+                tenant.getId(), monto, periodoMes, concepto);
+
+        return movimiento;
+    }
+
+    /**
      * Registra un ABONO histórico (reconciliación de movimientos previos de cartera).
      * Permite fijar la fecha original y es idempotente por claveRastreo:
      * si ya existe un movimiento con esa clave, no crea duplicado.
