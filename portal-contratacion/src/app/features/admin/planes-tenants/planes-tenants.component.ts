@@ -82,7 +82,10 @@ interface TenantRow extends TenantSummary {
             <ng-container matColumnDef="estado">
               <th mat-header-cell *matHeaderCellDef>Estado</th>
               <td mat-cell *matCellDef="let t">
-                <mat-chip [class]="'estado-' + t.estado">{{ t.estado }}</mat-chip>
+                <!-- Etiqueta solo informativa: Activo o Suspendido -->
+                <mat-chip [class]="'estado-' + estadoNormalizado(t.estado)">
+                  {{ estadoLabel(t.estado) }}
+                </mat-chip>
               </td>
             </ng-container>
 
@@ -146,10 +149,8 @@ interface TenantRow extends TenantSummary {
     .sin-plan { color: #b00020; font-style: italic; }
     .plan-select { min-width: 200px; }
     .empty { text-align: center; color: #6b7280; padding: 24px; }
-    mat-chip.estado-ACTIVE { background: #dcfce7; color: #166534; }
-    mat-chip.estado-SUSPENDED { background: #fef3c7; color: #92400e; }
-    mat-chip.estado-CANCELLED { background: #fee2e2; color: #991b1b; }
-    mat-chip.estado-ONBOARDING { background: #dbeafe; color: #1e40af; }
+    mat-chip.estado-active { background: #dcfce7; color: #166534; }
+    mat-chip.estado-suspended { background: #fee2e2; color: #991b1b; }
     td.mat-mdc-cell { padding: 12px 8px; }
   `],
 })
@@ -210,6 +211,19 @@ export class PlanesTenantsComponent implements OnInit {
 
   planName(codigo: string): string {
     return this.planes().find((p) => p.codigo === codigo)?.nombre ?? codigo;
+  }
+
+  /**
+   * Homologa el estado del tenant a solo dos valores: 'active' o 'suspended'.
+   * Cualquier estado distinto de ACTIVE (SUSPENDED, ONBOARDING, CANCELLED) se
+   * considera suspendido. La etiqueta es solo informativa; no dispara acciones.
+   */
+  estadoNormalizado(estado: string): 'active' | 'suspended' {
+    return (estado ?? '').toUpperCase() === 'ACTIVE' ? 'active' : 'suspended';
+  }
+
+  estadoLabel(estado: string): string {
+    return this.estadoNormalizado(estado) === 'active' ? 'Activo' : 'Suspendido';
   }
 
   onSearchChange(term: string): void {

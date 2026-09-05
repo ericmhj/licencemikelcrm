@@ -56,7 +56,8 @@ public class CarteraAdminService {
                         .slug(t.getEmailContacto())
                         .nombre(t.getNombre())
                         .plan(planNames.getOrDefault(t.getPlanId(), "sin-plan"))
-                        .estado(t.getEstado().name())
+                        // Estado efectivo según pago/vencimiento de la renta mensual.
+                        .estado(t.getEstadoEfectivo().name())
                         .build())
                 .collect(Collectors.toList());
     }
@@ -78,7 +79,8 @@ public class CarteraAdminService {
                         .slug(t.getEmailContacto())
                         .nombre(t.getNombre())
                         .plan(planNames.getOrDefault(t.getPlanId(), "sin-plan"))
-                        .estado(t.getEstado().name())
+                        // Estado efectivo según pago/vencimiento de la renta mensual.
+                        .estado(t.getEstadoEfectivo().name())
                         .build())
                 .collect(Collectors.toList());
     }

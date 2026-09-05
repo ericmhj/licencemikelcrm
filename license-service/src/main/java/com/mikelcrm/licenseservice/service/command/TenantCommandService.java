@@ -17,6 +17,7 @@ import com.mikelcrm.licenseservice.service.cache.CacheInvalidationService;
 import com.mikelcrm.licenseservice.service.command.dto.CommandResponse;
 import com.mikelcrm.licenseservice.service.command.dto.CreateTenantRequest;
 import com.mikelcrm.licenseservice.service.command.dto.ReactivateTenantRequest;
+import com.mikelcrm.licenseservice.util.SlugUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -283,7 +284,7 @@ public class TenantCommandService {
         payload.put("tenantId", tenant.getId().toString());
         payload.put("tenant_id", tenant.getId().toString());
         payload.put("nombre", tenant.getNombre());
-        payload.put("slug", toSlug(tenant.getNombre()));
+        payload.put("slug", SlugUtil.toSlug(tenant.getNombre()));
         payload.put("admin_email", tenant.getEmailContacto());
         payload.put("estado", tenant.getEstado().name());
 
@@ -307,19 +308,4 @@ public class TenantCommandService {
         return payload;
     }
 
-    /**
-     * Deriva el slug a partir del nombre del tenant.
-     * DEBE coincidir con deriveSlug() de SMT (src/lib/slug.ts) para que la
-     * correlación por slug (nombre de schema) sea consistente entre ambos sistemas:
-     * minúsculas, se eliminan acentos/diacríticos, no-alfanuméricos -> '-',
-     * guiones colapsados y recortados en los extremos.
-     */
-    private static String toSlug(String nombre) {
-        String normalized = java.text.Normalizer.normalize(nombre, java.text.Normalizer.Form.NFD)
-                .replaceAll("\\p{M}+", ""); // elimina diacríticos (acentos)
-        return normalized.toLowerCase()
-                .replaceAll("[^a-z0-9]+", "-")
-                .replaceAll("-{2,}", "-")
-                .replaceAll("^-|-$", "");
-    }
 }

@@ -5,6 +5,7 @@ import com.mikelcrm.licenseservice.domain.enums.EstadoTenant;
 import com.mikelcrm.licenseservice.domain.repository.TenantRepository;
 import com.mikelcrm.licenseservice.event.DomainEventPublisher;
 import com.mikelcrm.licenseservice.service.cache.CacheInvalidationService;
+import com.mikelcrm.licenseservice.util.SlugUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -88,6 +89,10 @@ public class CobroMensualVencidoJob {
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("tenantId", tenant.getId().toString());
+        payload.put("tenant_id", tenant.getId().toString());
+        // El consumidor de SMT suspende por slug: es obligatorio incluirlo.
+        payload.put("slug", SlugUtil.toSlug(tenant.getNombre()));
+        payload.put("estado", tenant.getEstado().name());
         payload.put("motivoSuspension", "impago_mensual");
         payload.put("periodoMes", mesActual.toString());
         domainEventPublisher.publish("tenant.suspended", tenant.getId(), payload, null);

@@ -9,7 +9,11 @@ import { errorInterceptor } from './core/interceptors/error.interceptor';
 export const appConfig: ApplicationConfig = {
   providers: [
     provideRouter(routes, withComponentInputBinding()),
-    provideHttpClient(withInterceptors([authInterceptor, errorInterceptor])),
+    // Orden importante: en la fase de respuesta, authInterceptor (refresh + retry
+    // ante 401) debe ejecutarse ANTES que errorInterceptor (logout/redirect).
+    // Angular ejecuta la respuesta en orden inverso al del array, por eso
+    // errorInterceptor va primero aquí.
+    provideHttpClient(withInterceptors([errorInterceptor, authInterceptor])),
     provideAnimationsAsync(),
   ],
 };

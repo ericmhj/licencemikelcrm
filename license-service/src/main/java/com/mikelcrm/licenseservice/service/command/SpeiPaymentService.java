@@ -4,6 +4,7 @@ import com.mikelcrm.licenseservice.domain.entity.*;
 import com.mikelcrm.licenseservice.domain.enums.*;
 import com.mikelcrm.licenseservice.domain.repository.*;
 import com.mikelcrm.licenseservice.event.DomainEventPublisher;
+import com.mikelcrm.licenseservice.util.SlugUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -179,6 +180,16 @@ public class SpeiPaymentService {
         tenantRepository.save(tenant);
         if (reactivado) {
             cacheInvalidationService.invalidateAccessCache(tenant.getId());
+            // Sincroniza el estado con SMT (espejo) vía Kafka/outbox: el pago dejó
+            // al tenant al corriente, por lo que se reactiva. El payload incluye el
+            // slug porque el consumidor de SMT reactiva por slug.
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("tenantId", tenant.getId().toString());
+            payload.put("tenant_id", tenant.getId().toString());
+            payload.put("slug", SlugUtil.toSlug(tenant.getNombre()));
+            payload.put("estado", tenant.getEstado().name());
+            payload.put("motivoReactivacion", "pago_mensual");
+            domainEventPublisher.publish("tenant.reactivated", tenant.getId(), payload, null);
         }
 
         // ── 3. EXCEDENTE: abonar el sobrante como saldo a favor (créditos) ──────

@@ -82,6 +82,13 @@ import { AuthService } from '../../../core/services/auth.service';
                 <mat-icon matListItemIcon>receipt_long</mat-icon>
                 <span matListItemTitle>Estados de Cuenta</span>
               </a>
+              <a mat-list-item
+                 routerLink="/contratacion"
+                 routerLinkActive="active-link"
+                 [routerLinkActiveOptions]="{ paths: 'subset', queryParams: 'ignored', fragment: 'ignored', matrixParams: 'ignored' }">
+                <mat-icon matListItemIcon>assignment_add</mat-icon>
+                <span matListItemTitle>Registro Contrato</span>
+              </a>
             }
           </mat-nav-list>
         </nav>

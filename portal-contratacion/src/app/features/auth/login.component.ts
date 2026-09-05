@@ -161,7 +161,7 @@ export class LoginComponent {
       )
       .subscribe({
         next: (response) => {
-          this.authService.login(response.access_token);
+          this.authService.login(response.access_token, response.refresh_token);
 
           const role = this.authService.getUserRole();
           if (role === 'platform_admin' || role === 'superusuario' || role === 'admin') {

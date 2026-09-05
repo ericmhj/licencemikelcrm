@@ -8,13 +8,18 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const router = inject(Router);
   const authService = inject(AuthService);
 
-  // Don't intercept public endpoints (onboarding flow)
+  // Flujo público de onboarding (sin sesión): no redirigir a login/acceso-denegado.
+  // Si HAY sesión activa (p.ej. admin operando), sí aplicamos el manejo aunque
+  // el endpoint sea de contratación, porque el 401 aquí significa que el refresh
+  // (authInterceptor) ya falló.
   const publicPaths = ['/api/v1/tenants', '/api/v1/payments'];
-  const isPublicRequest = publicPaths.some(path => req.url.includes(path));
+  const isOnboardingEndpoint = publicPaths.some(path => req.url.includes(path));
+  const hasSession = authService.isAuthenticated();
+  const skipHandling = isOnboardingEndpoint && !hasSession;
 
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
-      if (!isPublicRequest) {
+      if (!skipHandling) {
         if (error.status === 401) {
           authService.logout();
           router.navigate(['/login']);

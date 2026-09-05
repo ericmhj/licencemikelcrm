@@ -73,7 +73,10 @@ public class AccessQueryService {
         Tenant tenant = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new TenantNotFoundException(tenantId));
 
-        if (tenant.getEstado() == EstadoTenant.SUSPENDED) {
+        // Estado EFECTIVO: considera pago/vencimiento. Un tenant ACTIVE cuya renta
+        // no está al corriente se trata como SUSPENDED aunque el job diario aún no
+        // lo haya persistido. Así el acceso queda bloqueado sin depender del job.
+        if (tenant.getEstadoEfectivo() == EstadoTenant.SUSPENDED) {
             SuspendedResponse response = buildSuspendedResponse(tenant);
             cacheResponse(cacheKey, response);
             return response;
@@ -106,7 +109,7 @@ public class AccessQueryService {
 
         return AccessResponse.builder()
                 .tenantId(tenantId)
-                .status(tenant.getEstado().name())
+                .status(tenant.getEstadoEfectivo().name())
                 .modules(modules)
                 .creditBalance(creditBalance)
                 .userRole(userRole)

@@ -59,4 +59,29 @@ public class Tenant {
 
     @Column(name = "plan_id")
     private UUID planId;
+
+    /**
+     * True si la renta mensual del tenant está al corriente: tiene pagado el mes
+     * actual (o uno posterior). Misma regla que aplica CobroMensualVencidoJob.
+     */
+    public boolean estaAlCorriente() {
+        java.time.LocalDate mesActual = java.time.LocalDate.now().withDayOfMonth(1);
+        return servicioPagadoHasta != null && !servicioPagadoHasta.isBefore(mesActual);
+    }
+
+    /**
+     * Estado EFECTIVO en función del pago/vencimiento de la renta mensual.
+     * <p>
+     * El campo {@code estado} solo cambia a SUSPENDED cuando corre el job diario,
+     * por lo que puede quedar desfasado respecto al pago real. Este método deriva
+     * el estado en tiempo de lectura: un tenant ACTIVE cuya renta está vencida se
+     * reporta como SUSPENDED de inmediato. Los estados ONBOARDING y CANCELLED se
+     * respetan tal cual (no dependen del pago mensual).
+     */
+    public EstadoTenant getEstadoEfectivo() {
+        if (estado == EstadoTenant.ACTIVE && !estaAlCorriente()) {
+            return EstadoTenant.SUSPENDED;
+        }
+        return estado;
+    }
 }
