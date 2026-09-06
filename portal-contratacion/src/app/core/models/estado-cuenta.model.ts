@@ -26,6 +26,8 @@ export interface TenantEdoCuentaResumen {
   saldoActual: number;
   totalAbonos: number;
   totalCargos: number;
+  // Total de pagos de renta (PAGO_RENTA), separado de los cargos variables.
+  totalPagosRenta: number;
   // Adeudo de mensualidad (calculado, no es un movimiento del estado de cuenta)
   mensualidad: number;
   mesPagado: boolean;

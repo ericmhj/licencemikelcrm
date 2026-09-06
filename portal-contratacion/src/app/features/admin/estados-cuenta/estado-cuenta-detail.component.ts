@@ -77,24 +77,25 @@ import { MovimientoEdoCuenta, TenantEdoCuentaResumen } from '../../../core/model
           }
 
           <mat-card-content>
-            <div class="metrics-grid">
-              <div class="metric metric-saldo">
-                <span class="metric-value" [class.negative]="resumen.saldoActual < 0">
+            <!-- Desglose del saldo: Abonos − (Renta + Cargos variables) = Saldo a favor -->
+            <div class="saldo-breakdown">
+              <div class="bd-linea">
+                <span class="bd-label">Abonos</span>
+                <span class="bd-valor positive">+ {{ resumen.totalAbonos | currency:'MXN':'symbol':'1.2-2' }}</span>
+              </div>
+              <div class="bd-linea">
+                <span class="bd-label">Cargo por renta</span>
+                <span class="bd-valor negative">− {{ resumen.totalPagosRenta | currency:'MXN':'symbol':'1.2-2' }}</span>
+              </div>
+              <div class="bd-linea">
+                <span class="bd-label">Cargos variables</span>
+                <span class="bd-valor negative">− {{ resumen.totalCargos | currency:'MXN':'symbol':'1.2-2' }}</span>
+              </div>
+              <div class="bd-linea bd-total">
+                <span class="bd-label">Saldo a favor</span>
+                <span class="bd-valor" [class.negative]="resumen.saldoActual < 0" [class.saldo]="resumen.saldoActual >= 0">
                   {{ resumen.saldoActual | currency:'MXN':'symbol':'1.2-2' }}
                 </span>
-                <span class="metric-label">Saldo actual</span>
-              </div>
-              <div class="metric">
-                <span class="metric-value positive">
-                  {{ resumen.totalAbonos | currency:'MXN':'symbol':'1.2-2' }}
-                </span>
-                <span class="metric-label">Total abonos</span>
-              </div>
-              <div class="metric">
-                <span class="metric-value negative">
-                  {{ resumen.totalCargos | currency:'MXN':'symbol':'1.2-2' }}
-                </span>
-                <span class="metric-label">Total cargos</span>
               </div>
             </div>
 
@@ -268,6 +269,16 @@ import { MovimientoEdoCuenta, TenantEdoCuentaResumen } from '../../../core/model
     .suspended-notice { display: flex; align-items: center; gap: 8px; margin: 0 16px 12px; padding: 10px 14px; background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; border-radius: 8px; font-size: 13px; }
     .metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 16px 0; }
     .metric { background: #f8fafc; border-radius: 8px; padding: 16px; text-align: center; }
+    .saldo-breakdown { max-width: 420px; margin: 16px 0; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 18px; }
+    .bd-linea { display: flex; justify-content: space-between; align-items: baseline; padding: 6px 0; }
+    .bd-label { color: #475569; font-size: 14px; }
+    .bd-valor { font-weight: 600; font-size: 14px; font-variant-numeric: tabular-nums; }
+    .bd-valor.positive { color: #16a34a; }
+    .bd-valor.negative { color: #dc2626; }
+    .bd-total { border-top: 2px solid #cbd5e1; margin-top: 6px; padding-top: 10px; }
+    .bd-total .bd-label { font-weight: 700; color: #1e293b; font-size: 15px; }
+    .bd-total .bd-valor { font-size: 18px; font-weight: 800; }
+    .bd-total .bd-valor.saldo { color: #16a34a; }
     .mes-resumen { margin-top: 16px; padding: 14px 16px; border-radius: 10px; font-size: 14px; }
     .mes-resumen.al-corriente { background: #ecfdf5; border: 1px solid #a7f3d0; }
     .mes-resumen.moroso { background: #fef2f2; border: 1px solid #fecaca; }

@@ -1,37 +1,44 @@
-import { Injectable, inject, signal, computed } from '@angular/core';
-import { CalculatorService } from './calculator.service';
-import { ModuloDisponible, PaqueteCreditos, MODULOS_DISPONIBLES } from '../../../core/models/calculator.model';
+import { Injectable, signal, computed } from '@angular/core';
+import { PaqueteCreditos, SubtotalItem } from '../../../core/models/calculator.model';
+import { Plan } from '../../../core/services/plan.service';
 
+/**
+ * Estado de la calculadora del portal de contratación.
+ *
+ * Modelo por PLAN (selección única): el usuario elige un plan del catálogo
+ * (los mismos de /admin/planes) y la calculadora recalcula con su precio
+ * mensual. Opcionalmente se agrega un paquete de créditos.
+ */
 @Injectable()
 export class CalculatorStateService {
-  private readonly calculatorService = inject(CalculatorService);
-
-  private readonly _selectedModules = signal<ModuloDisponible[]>(
-    MODULOS_DISPONIBLES.filter(m => m.obligatorio)
-  );
+  private readonly _selectedPlan = signal<Plan | null>(null);
   private readonly _selectedPackage = signal<PaqueteCreditos | null>(null);
 
-  readonly selectedModules = this._selectedModules.asReadonly();
+  readonly selectedPlan = this._selectedPlan.asReadonly();
   readonly selectedPackage = this._selectedPackage.asReadonly();
 
-  readonly subtotales = computed(() =>
-    this.calculatorService.calcularSubtotales(this._selectedModules())
-  );
-  readonly totalAnual = computed(() =>
-    this.calculatorService.calcularTotalAnual(this._selectedModules(), this._selectedPackage())
-  );
-  readonly cuotaMensual = computed(() =>
-    this.calculatorService.calcularCuotaMensual(this.totalAnual())
-  );
+  /** Desglose para la calculadora: el plan como única línea de servicio. */
+  readonly subtotales = computed<SubtotalItem[]>(() => {
+    const plan = this._selectedPlan();
+    if (!plan) return [];
+    return [{
+      moduloId: plan.codigo,
+      nombre: plan.nombre,
+      precioMensual: plan.precioMensual,
+      subtotalAnual: plan.precioMensual * 12,
+    }];
+  });
 
-  toggleModule(module: ModuloDisponible): void {
-    if (module.obligatorio) return;
-    this._selectedModules.update(modules => {
-      const exists = modules.find(m => m.id === module.id);
-      return exists
-        ? modules.filter(m => m.id !== module.id)
-        : [...modules, module];
-    });
+  readonly totalAnual = computed<number>(() => {
+    const plan = this._selectedPlan();
+    const planAnual = plan ? plan.precioMensual * 12 : 0;
+    return planAnual + (this._selectedPackage()?.precioAnual ?? 0);
+  });
+
+  readonly cuotaMensual = computed<number>(() => this.totalAnual() / 12);
+
+  selectPlan(plan: Plan): void {
+    this._selectedPlan.set(plan);
   }
 
   selectPackage(pkg: PaqueteCreditos | null): void {
@@ -39,7 +46,7 @@ export class CalculatorStateService {
   }
 
   reset(): void {
-    this._selectedModules.set(MODULOS_DISPONIBLES.filter(m => m.obligatorio));
+    this._selectedPlan.set(null);
     this._selectedPackage.set(null);
   }
 }

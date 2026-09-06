@@ -13,14 +13,15 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { ModuleCardsComponent } from '../components/module-cards/module-cards.component';
+import { PlanCardsComponent } from '../components/plan-cards/plan-cards.component';
 import { CreditPackagesComponent } from '../components/credit-packages/credit-packages.component';
 import { CalculatorComponent } from '../components/calculator/calculator.component';
 import { DiscountPolicyComponent } from '../components/discount-policy/discount-policy.component';
 import { ServiceSummaryComponent } from '../components/service-summary/service-summary.component';
 import { PaymentDialogComponent, PaymentDialogData, PaymentDialogResult } from '../components/payment-dialog/payment-dialog.component';
 import { CalculatorStateService } from '../services/calculator-state.service';
-import { MODULOS_DISPONIBLES, ModuloDisponible, PaqueteCreditos } from '../../../core/models/calculator.model';
+import { PaqueteCreditos } from '../../../core/models/calculator.model';
+import { PlanService, Plan } from '../../../core/services/plan.service';
 import { CurrencyEurPipe } from '../../../shared/pipes/currency-eur.pipe';
 import { environment } from '../../../../environments/environment';
 
@@ -33,7 +34,7 @@ import { environment } from '../../../../environments/environment';
     MatFormFieldModule, MatInputModule, MatSelectModule,
     MatIconModule, MatSnackBarModule, MatProgressSpinnerModule,
     MatDialogModule,
-    ModuleCardsComponent, CreditPackagesComponent,
+    PlanCardsComponent, CreditPackagesComponent,
     CalculatorComponent, DiscountPolicyComponent,
     ServiceSummaryComponent, CurrencyEurPipe,
   ],
@@ -55,11 +56,12 @@ import { environment } from '../../../../environments/environment';
       <main class="max-w-7xl mx-auto px-4 py-8">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-          <!-- Columna izquierda: Módulos + Créditos + Descuentos -->
+          <!-- Columna izquierda: Planes + Créditos + Descuentos -->
           <section class="lg:col-span-2 space-y-6">
-            <app-module-cards
-              [modules]="modules"
-              (selectionChanged)="onModulesChanged($event)"
+            <app-plan-cards
+              [plans]="plans()"
+              [selectedCodigo]="state.selectedPlan()?.codigo ?? null"
+              (planSelected)="onPlanSelected($event)"
             />
             <app-credit-packages
               (packageChanged)="onPackageChanged($event)"
@@ -184,11 +186,14 @@ import { environment } from '../../../../environments/environment';
 })
 export class PublicLayoutComponent {
   readonly state = inject(CalculatorStateService);
-  readonly modules = MODULOS_DISPONIBLES;
   private readonly http = inject(HttpClient);
+  private readonly planService = inject(PlanService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
+
+  /** Planes disponibles cargados del catálogo (mismos que /admin/planes). */
+  readonly plans = signal<Plan[]>([]);
 
   showForm = signal(false);
   submitting = signal(false);
@@ -201,16 +206,22 @@ export class PublicLayoutComponent {
     modalidad: 'ESTANDAR',
   };
 
-  onModulesChanged(selected: ModuloDisponible[]): void {
-    const currentSelected = this.state.selectedModules();
-    for (const mod of this.modules) {
-      if (mod.obligatorio) continue;
-      const isInState = currentSelected.some(m => m.id === mod.id);
-      const isInSelection = selected.some(m => m.id === mod.id);
-      if (isInState !== isInSelection) {
-        this.state.toggleModule(mod);
-      }
-    }
+  constructor() {
+    // Cargar planes activos del catálogo y preseleccionar "Esencial" si existe.
+    this.planService.getAll().subscribe({
+      next: (plans) => {
+        const activos = plans.filter(p => p.activo);
+        this.plans.set(activos);
+        const esencial = activos.find(p => p.codigo?.toUpperCase() === 'ESENCIAL')
+          ?? activos[0];
+        if (esencial) this.state.selectPlan(esencial);
+      },
+      error: () => this.snackBar.open('Error cargando planes', 'Cerrar', { duration: 3000 }),
+    });
+  }
+
+  onPlanSelected(plan: Plan): void {
+    this.state.selectPlan(plan);
   }
 
   onPackageChanged(pkg: PaqueteCreditos | null): void {
@@ -262,6 +273,7 @@ export class PublicLayoutComponent {
       }).toPromise();
 
       const tenantId = tenantResponse.id;
+      const plan = this.state.selectedPlan();
 
       // 2. Procesar apertura
       await this.http.post(`${baseUrl}/api/v1/tenants/${tenantId}/apertura`, {
@@ -270,12 +282,13 @@ export class PublicLayoutComponent {
         transactionId: result.transactionId,
       }).toPromise();
 
-      // 3. Crear contratos por módulo seleccionado
-      for (const mod of this.state.selectedModules()) {
+      // 3. Crear el contrato del PLAN seleccionado.
+      if (plan) {
         await this.http.post(`${baseUrl}/api/v1/tenants/${tenantId}/contracts`, {
-          tipo: 'MODULO',
-          modulo: mod.nombre,
-          cuotaMensual: mod.precioMensual,
+          tipo: 'PLAN',
+          planCodigo: plan.codigo,
+          modulo: plan.nombre,
+          cuotaMensual: plan.precioMensual,
           fechaInicio: new Date().toISOString().split('T')[0],
           renovacionAuto: true,
         }).toPromise();
@@ -298,7 +311,7 @@ export class PublicLayoutComponent {
         tenantId: tenantId,
         modalidad: this.formData.modalidad,
         creditosBienvenida: this.formData.modalidad === 'ESTANDAR' ? 2 : 10,
-        modulos: this.state.selectedModules().map(m => m.nombre),
+        plan: this.state.selectedPlan()?.nombre ?? null,
         cuotaMensual: this.state.cuotaMensual(),
       }).toPromise();
 
