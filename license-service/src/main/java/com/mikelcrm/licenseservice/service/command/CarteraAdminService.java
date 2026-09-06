@@ -8,10 +8,13 @@ import com.mikelcrm.licenseservice.domain.entity.Plan;
 import com.mikelcrm.licenseservice.domain.entity.Tenant;
 import com.mikelcrm.licenseservice.domain.enums.EstadoPaquete;
 import com.mikelcrm.licenseservice.domain.enums.TipoEventoCredito;
+import com.mikelcrm.licenseservice.domain.enums.TipoMovimientoEdoCuenta;
+import com.mikelcrm.licenseservice.domain.repository.EstadoCuentaTenantRepository;
 import com.mikelcrm.licenseservice.domain.repository.EventoCreditoRepository;
 import com.mikelcrm.licenseservice.domain.repository.PaqueteCreditosRepository;
 import com.mikelcrm.licenseservice.domain.repository.PlanRepository;
 import com.mikelcrm.licenseservice.domain.repository.TenantRepository;
+import org.springframework.data.domain.PageRequest;
 import com.mikelcrm.licenseservice.event.DomainEventPublisher;
 import com.mikelcrm.licenseservice.exception.TenantNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +43,7 @@ public class CarteraAdminService {
     private final PlanRepository planRepository;
     private final DomainEventPublisher domainEventPublisher;
     private final EstadoCuentaService estadoCuentaService;
+    private final EstadoCuentaTenantRepository estadoCuentaTenantRepository;
 
     private static final String KAFKA_TOPIC = "license-events";
 
@@ -131,22 +135,20 @@ public class CarteraAdminService {
             throw new TenantNotFoundException(tenantId);
         }
 
-        // Get all events and filter (repository doesn't have tenant-specific query methods)
-        List<EventoCredito> allEventos = eventoCreditoRepository.findAll();
+        // El historial de cartera unifica DOS fuentes para reflejar cómo se forma
+        // el saldo disponible:
+        //   1) EventoCredito: recargas y consumos de créditos.
+        //   2) EstadoCuentaTenant: movimientos de dinero que afectan el saldo:
+        //        - ABONO             → suma (entra dinero).
+        //        - CARGO / PAGO_RENTA → resta (cobro variable o renta aplicada).
+        // Ambas fuentes se mapean al mismo LedgerEntryResponse, se ordenan por
+        // fecha descendente y se paginan sobre el conjunto combinado.
+        List<LedgerEntryResponse> combinados = new ArrayList<>();
 
-        List<EventoCredito> filtered = allEventos.stream()
+        // Fuente 1: eventos de crédito del tenant.
+        eventoCreditoRepository.findAll().stream()
                 .filter(e -> e.getTenant() != null && tenantId.equals(e.getTenant().getId()))
-                .filter(e -> tipo == null || tipo.isBlank() || e.getTipo().name().equalsIgnoreCase(tipo))
-                .sorted(Comparator.comparing(EventoCredito::getOcurridoEn).reversed())
-                .collect(Collectors.toList());
-
-        long total = filtered.size();
-        int totalPages = (int) Math.ceil((double) total / pageSize);
-        int fromIndex = (page - 1) * pageSize;
-        int toIndex = Math.min(fromIndex + pageSize, filtered.size());
-
-        List<LedgerEntryResponse> entries = filtered.subList(fromIndex, toIndex).stream()
-                .map(e -> LedgerEntryResponse.builder()
+                .forEach(e -> combinados.add(LedgerEntryResponse.builder()
                         .id(e.getId().toString())
                         .tipo(e.getTipo().name().toLowerCase())
                         .cantidad(e.getCantidad())
@@ -157,8 +159,39 @@ public class CarteraAdminService {
                         .actorId(e.getUsuarioId() != null ? e.getUsuarioId().toString() : null)
                         .actorEmail(null)
                         .createdAt(e.getOcurridoEn() != null ? e.getOcurridoEn().toString() : "")
-                        .build())
+                        .build()));
+
+        // Fuente 2: movimientos del estado de cuenta (abonos y cargos).
+        estadoCuentaTenantRepository
+                .findByTenantIdOrderByRegistradoEnDesc(tenantId, PageRequest.of(0, 10000))
+                .getContent()
+                .forEach(m -> combinados.add(LedgerEntryResponse.builder()
+                        .id(m.getId().toString())
+                        .tipo(m.getTipo().name().toLowerCase())
+                        .cantidad(m.getMonto())
+                        .saldoResultante(m.getSaldoResultante())
+                        .concepto(m.getConcepto() != null ? m.getConcepto()
+                                : (m.getTipo() == TipoMovimientoEdoCuenta.ABONO ? "Abono a cuenta" : "Cargo a cuenta"))
+                        .perfilDocumento(null)
+                        .referencia(m.getClaveRastreo() != null ? m.getClaveRastreo() : m.getReferencia())
+                        .actorId(null)
+                        .actorEmail(null)
+                        .createdAt(m.getRegistradoEn() != null ? m.getRegistradoEn().toString() : "")
+                        .build()));
+
+        // Filtro por tipo (opcional) y orden por fecha desc sobre el conjunto unificado.
+        List<LedgerEntryResponse> filtered = combinados.stream()
+                .filter(e -> tipo == null || tipo.isBlank() || e.getTipo().equalsIgnoreCase(tipo))
+                .sorted(Comparator.comparing(
+                        LedgerEntryResponse::getCreatedAt,
+                        Comparator.nullsLast(Comparator.reverseOrder())))
                 .collect(Collectors.toList());
+
+        long total = filtered.size();
+        int totalPages = (int) Math.ceil((double) total / pageSize);
+        int fromIndex = Math.min((page - 1) * pageSize, filtered.size());
+        int toIndex = Math.min(fromIndex + pageSize, filtered.size());
+        List<LedgerEntryResponse> entries = filtered.subList(fromIndex, toIndex);
 
         return PaginatedLedgerResponse.builder()
                 .data(entries)

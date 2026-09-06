@@ -95,8 +95,11 @@ public class EstadoCuentaService {
 
     /**
      * Registra un PAGO DE RENTA mensual del CRM en el estado de cuenta.
-     * No es un abono a favor: no incrementa el saldo de crédito (saldoResultante
-     * se mantiene). Sirve como registro contable del pago que habilita el servicio.
+     * <p>
+     * Modelo de cartera de PREPAGO: la renta se cubre DESCONTANDO del saldo a
+     * favor del tenant (previamente abonado). Por eso este movimiento RESTA del
+     * saldo, igual que un cargo. El monto se guarda en negativo para reflejar la
+     * salida de dinero.
      */
     @Transactional
     public EstadoCuentaTenant registrarPagoRenta(
@@ -108,14 +111,15 @@ public class EstadoCuentaService {
             String periodoMes,
             UUID pagoSpeiId) {
 
-        // El pago de renta no altera el saldo de crédito (cartera).
-        BigDecimal saldoActual = obtenerSaldoActual(tenant.getId());
+        // El pago de renta descuenta del saldo a favor (prepago).
+        BigDecimal saldoAnterior = obtenerSaldoActual(tenant.getId());
+        BigDecimal saldoResultante = saldoAnterior.subtract(monto);
 
         EstadoCuentaTenant movimiento = EstadoCuentaTenant.builder()
                 .tenant(tenant)
                 .tipo(TipoMovimientoEdoCuenta.PAGO_RENTA)
-                .monto(monto)
-                .saldoResultante(saldoActual)
+                .monto(monto.negate())
+                .saldoResultante(saldoResultante)
                 .concepto(concepto)
                 .referencia(referencia)
                 .claveRastreo(claveRastreo)
@@ -125,8 +129,8 @@ public class EstadoCuentaService {
 
         movimiento = estadoCuentaRepository.save(movimiento);
 
-        log.info("[EdoCuenta] PAGO_RENTA registrado: tenant={}, monto={}, periodo={}, concepto={}",
-                tenant.getId(), monto, periodoMes, concepto);
+        log.info("[EdoCuenta] PAGO_RENTA registrado: tenant={}, monto=-{}, saldo={}, periodo={}, concepto={}",
+                tenant.getId(), monto, saldoResultante, periodoMes, concepto);
 
         return movimiento;
     }

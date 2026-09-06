@@ -129,6 +129,21 @@ public class SpeiPaymentService {
                 : null;
         BigDecimal mensualidad = (plan != null) ? plan.getPrecioMensual() : null;
 
+        // ── 0. ABONO del pago completo a la cartera (prepago) ───────────────────
+        // El dinero recibido entra ÍNTEGRO como saldo a favor del tenant. Luego la
+        // renta se descuenta de ese saldo (ver paso 1). Así el estado de cuenta
+        // refleja el abono real del cliente y no solo el excedente.
+        estadoCuentaService.registrarAbono(
+                tenant,
+                monto,
+                "Abono a cartera (pago recibido)",
+                pago.getClaveRastreo(),
+                pago.getClaveRastreo(),
+                null,
+                null,
+                pago.getId()
+        );
+
         // ── 1. RENTA: cubrir meses completos posibles ──────────────────────────
         if (mensualidad != null && mensualidad.signum() > 0) {
             // Asegurar que existan las mensualidades desde el alta hasta el mes actual.
@@ -192,19 +207,12 @@ public class SpeiPaymentService {
             domainEventPublisher.publish("tenant.reactivated", tenant.getId(), payload, null);
         }
 
-        // ── 3. EXCEDENTE: abonar el sobrante como saldo a favor (créditos) ──────
+        // ── 3. EXCEDENTE: otorgar créditos por el sobrante (cartera de créditos) ─
+        // El saldo a favor en el estado de cuenta YA quedó reflejado por el abono
+        // total (paso 0) menos la renta descontada (paso 1); no se registra otro
+        // ABONO aquí para no duplicar. Solo se otorgan los créditos operativos.
         if (restante.signum() > 0) {
             otorgarCreditos(tenant, restante, "Saldo a favor (excedente de pago)");
-            estadoCuentaService.registrarAbono(
-                    tenant,
-                    restante,
-                    "Saldo a favor (excedente de pago)",
-                    pago.getClaveRastreo(),
-                    pago.getClaveRastreo(),
-                    null,
-                    null,
-                    pago.getId()
-            );
         }
 
         // ── 4. Actualizar el pago SPEI ──────────────────────────────────────────
